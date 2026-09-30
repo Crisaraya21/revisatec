@@ -27,6 +27,7 @@ export function usePaginatedList(endpoint, { pageSize = 5 } = {}) {
     }
   }, [endpoint, page, pageSize, search]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   // Buscar siempre regresa a la página 1

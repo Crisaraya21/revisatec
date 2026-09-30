@@ -4,7 +4,7 @@ import { Icons } from '../components/Icons';
 import './Calendar.css';
 
 export default function Calendar() {
-  const [events, setEvents] = useState([]);
+  const [, setEvents] = useState([]);
 
   // Estados de toggles para avisos automáticos (Figma)
   const [notifWeekly, setNotifWeekly] = useState(true);

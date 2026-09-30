@@ -58,6 +58,7 @@ export default function Issues() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchIssuesFromApi();
   }, []);
 

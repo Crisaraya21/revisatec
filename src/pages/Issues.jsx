@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { api } from '../lib/apiClient';
 import { Icons } from '../components/Icons';
 import './Issues.css';
@@ -170,6 +170,8 @@ export default function Issues() {
           <Icons.Refresh />
           <span>{isLoading ? 'Actualizando...' : 'Actualizar análisis'}</span>
         </button>
+      </div>{/* end issues-header */}
+
       {/* Error de Conexión Azure APIM */}
       {apiError && (
         <div style={{ backgroundColor: 'var(--badge-alert-bg)', color: 'var(--badge-alert-text)', border: '1px solid var(--badge-alert-border)', padding: '16px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>

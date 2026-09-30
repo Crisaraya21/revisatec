@@ -1,0 +1,36 @@
+/* Pega esto en tu index.css o App.css.
+   Los mismos nombres que usamos en Figma (bg, surface, text, action...) */
+
+:root[data-theme='light'] {
+  --bg-page: #f4f7fb;
+  --bg-surface: #ffffff;
+  --bg-sunken: #e8eef6;
+  --border-default: #cbdcec;
+  --border-strong: #9dbedc;
+  --text-primary: #192738;
+  --text-secondary: #2b5279;
+  --text-muted: #396fa2;
+  --action-primary: #396fa2;
+  --action-primary-hover: #2b5279;
+  --action-on-primary: #ffffff;
+}
+
+:root[data-theme='dark'] {
+  --bg-page: #192738;
+  --bg-surface: #253c55;
+  --bg-sunken: #274665;
+  --border-default: #2b5279;
+  --border-strong: #396fa2;
+  --text-primary: #f4f7fb;
+  --text-secondary: #cbdcec;
+  --text-muted: #9dbedc;
+  --action-primary: #699cc7;
+  --action-primary-hover: #9dbedc;
+  --action-on-primary: #192738;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}

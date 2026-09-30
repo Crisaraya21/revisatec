@@ -2,6 +2,8 @@
 // La URL base y la clave NUNCA se hardcodean ni se suben al repo: vienen de
 // variables de entorno que GitHub Actions inyecta en el build (ver .env.example).
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_SUBSCRIPTION_KEY =
+  import.meta.env.VITE_API_SUBSCRIPTION_KEY || import.meta.env.VITE_API_KEY;
 
 if (!BASE_URL) {
   // Falla rápido en desarrollo si alguien olvida configurar el .env local.
@@ -20,7 +22,7 @@ async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
-      'Ocp-Apim-Subscription-Key': import.meta.env.VITE_API_KEY,
+      'Ocp-Apim-Subscription-Key': API_SUBSCRIPTION_KEY,
       ...options.headers,
     },
     ...options,

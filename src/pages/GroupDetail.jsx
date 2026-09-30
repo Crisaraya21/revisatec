@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../lib/apiClient';
 import { Icons } from '../components/Icons';
@@ -9,57 +9,44 @@ export default function GroupDetail() {
   const navigate = useNavigate();
   const groupId = id || 2;
 
-  const [group, setGroup] = useState({
-    id: groupId,
-    name: `Grupo ${groupId}`,
-    repoUrl: `https://github.com/revisatec/g${groupId}-web`,
-    avance: 72,
-    score: 85,
-    estado: 'En curso',
-  });
-
-  const [criteria, setCriteria] = useState([
-    { name: 'Código limpio', status: 'cumplido', level: 'bueno', weight: 25 },
-    { name: 'Contribución equitativa', status: 'en progreso', level: 'regular', weight: 20 },
-    { name: 'Calidad de commits', status: 'cumplido', level: 'bueno', weight: 25 },
-    { name: 'Documentación', status: 'pendiente', level: 'regular', weight: 30 },
-  ]);
-
-  const [directReviews, setDirectReviews] = useState([
-    { date: '2026-09-20', note: 'Revisión directa inicial de arquitectura' },
-  ]);
+  const [group, setGroup] = useState(null);
+  const [criteria, setCriteria] = useState([]);
+  const [directReviews, setDirectReviews] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState(null);
 
   useEffect(() => {
     async function loadGroupDetails() {
       setIsLoading(true);
+      setApiError(null);
       try {
-        const groupRes = await api.get(`/groups/${groupId}`).catch(() => null);
-        if (groupRes?.name) {
-          setGroup((prev) => ({
-            ...prev,
-            name: groupRes.name,
-            repoUrl: groupRes.repoUrl || prev.repoUrl,
-          }));
-        }
+        const groupRes = await api.get(`/groups/${groupId}`);
+        setGroup({
+          id: groupId,
+          name: groupRes.name || `Grupo ${groupId}`,
+          repoUrl: groupRes.repoUrl || '',
+          avance: groupRes.avance || 0,
+          score: groupRes.score || 0,
+          estado: groupRes.estado || 'En curso',
+        });
 
-        const analysisRes = await api.get(`/groups/${groupId}/analysis`).catch(() => null);
-        if (analysisRes?.score) {
+        const analysisRes = await api.get(`/groups/${groupId}/analysis`);
+        if (analysisRes?.score !== undefined) {
           setGroup((prev) => ({ ...prev, score: analysisRes.score }));
         }
 
-        const criteriaRes = await api.get(`/groups/${groupId}/criteria`).catch(() => null);
-        if (criteriaRes?.criteria?.length > 0) {
-          setCriteria(criteriaRes.criteria);
-        }
+        const criteriaRes = await api.get(`/groups/${groupId}/criteria`);
+        setCriteria(criteriaRes?.criteria || []);
 
-        const reviewsRes = await api.get(`/groups/${groupId}/direct-reviews`).catch(() => null);
-        if (reviewsRes?.items?.length > 0) {
-          setDirectReviews(reviewsRes.items);
-        }
+        const reviewsRes = await api.get(`/groups/${groupId}/direct-reviews`);
+        setDirectReviews(reviewsRes?.items || []);
       } catch (err) {
-        console.warn('Usando valores iniciales de detalle:', err);
+        console.error('Error al cargar detalle del grupo desde APIM:', err);
+        setApiError('Error de conexion con Azure APIM: No se pudo cargar la informacion del grupo.');
+        setGroup(null);
+        setCriteria([]);
+        setDirectReviews([]);
       } finally {
         setIsLoading(false);
       }
@@ -83,11 +70,6 @@ export default function GroupDetail() {
       setNewNote('');
     } catch (err) {
       console.error('Error al agregar nota:', err);
-      setDirectReviews((prev) => [
-        ...prev,
-        { date: new Date().toISOString().split('T')[0], note: newNote.trim() },
-      ]);
-      setNewNote('');
     }
   };
 
@@ -100,158 +82,94 @@ export default function GroupDetail() {
             <button
               type="button"
               onClick={() => navigate('/groups')}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-              }}
+              className="btn-back"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}
             >
-              ← Volver a grupos
+              <Icons.ChevronLeft />
+              <span style={{ fontSize: '0.813rem' }}>Grupos</span>
             </button>
+            <span style={{ color: 'var(--border-default)' }}>/</span>
+            <h1 className="student-welcome-title" style={{ fontSize: '1.2rem' }}>
+              {group ? group.name : `Grupo ${groupId}`}
+            </h1>
           </div>
-          <h1 className="student-welcome-title">{group.name}</h1>
-          <span className="student-group-subtitle">
-            {group.repoUrl.replace('https://github.com/', '')} · Análisis y Métricas
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate('/feedback')}
-          className="btn-new-event"
-        >
-          <Icons.Feedback />
-          <span>Ver retroalimentación</span>
-        </button>
-      </div>
-
-      {/* Métricas del Grupo */}
-      <div className="student-metrics-grid">
-        <div className="student-metric-card">
-          <span className="student-metric-label">Nota estimada</span>
-          <div className="student-metric-val">
-            <strong>{group.score}</strong>
-            <span className="metric-denom"> / 100</span>
-          </div>
-          <span className="student-metric-caption">Cálculo de Azure APIM</span>
-        </div>
-
-        <div className="student-metric-card">
-          <span className="student-metric-label">Avance global</span>
-          <div className="student-metric-val">
-            <strong>{group.avance}%</strong>
-          </div>
-          <span className="student-metric-caption">Progreso del repositorio</span>
-        </div>
-
-        <div className="student-metric-card">
-          <span className="student-metric-label">Estado actual</span>
-          <div className="student-metric-val" style={{ fontSize: '1.25rem', marginTop: 4 }}>
-            <span className="status-pill in-progress">
-              <Icons.Clock />
-              <span>{group.estado}</span>
+          {group && (
+            <span className="student-group-subtitle">
+              {group.repoUrl ? group.repoUrl.replace('https://github.com/', '') : 'Sin repositorio'} &middot; {group.estado}
             </span>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Grid: Criterios Evaluados + Revisiones Directas */}
-      <div className="student-main-grid">
-        {/* Criterios de la Rúbrica */}
-        <div className="student-progress-card">
-          <h3 className="card-title-simple">Criterios evaluados por el sistema</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {criteria.map((crit, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  backgroundColor: 'var(--bg-sunken)',
-                  borderRadius: 10,
-                  border: '1px solid var(--border-default)',
-                }}
-              >
-                <div>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>
-                    {crit.name}
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    Ponderación: {crit.weight || 25}%
-                  </span>
+      {/* Error API */}
+      {apiError && (
+        <div style={{ backgroundColor: 'var(--badge-alert-bg)', color: 'var(--badge-alert-text)', border: '1px solid var(--badge-alert-border)', padding: '16px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Icons.AlertTriangle />
+          <span style={{ fontSize: '0.844rem', fontWeight: 600 }}>{apiError}</span>
+        </div>
+      )}
+
+      {/* Cargando */}
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+          Cargando informacion del grupo...
+        </div>
+      )}
+
+      {/* Contenido */}
+      {!isLoading && !apiError && group && (
+        <>
+          {/* Criterios */}
+          {criteria.length > 0 && (
+            <div className="criteria-card">
+              <div className="criteria-card-header">
+                <h3 className="criteria-card-title">Criterios de evaluacion</h3>
+              </div>
+              <div className="criteria-list">
+                {criteria.map((c, i) => (
+                  <div key={i} className="criterion-row">
+                    <div className="criterion-info-top">
+                      <span className="criterion-name">{c.name}</span>
+                      <span className={`criterion-badge ${c.level === 'bueno' ? 'success' : c.level === 'regular' ? 'warning' : 'alert'}`}>
+                        {c.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Revisiones directas */}
+          <div className="criteria-card">
+            <div className="criteria-card-header">
+              <h3 className="criteria-card-title">Revisiones directas</h3>
+            </div>
+            {directReviews.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.844rem' }}>Sin revisiones registradas.</p>
+            ) : (
+              directReviews.map((r, i) => (
+                <div key={i} style={{ padding: '10px 0', borderBottom: '1px solid var(--border-default)', fontSize: '0.844rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{r.date}</span> &mdash; {r.note}
                 </div>
-                <span
-                  style={{
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    textTransform: 'capitalize',
-                    padding: '3px 10px',
-                    borderRadius: 12,
-                    backgroundColor: crit.status === 'cumplido' ? 'rgba(34, 197, 94, 0.12)' : 'var(--badge-warning-bg)',
-                    color: crit.status === 'cumplido' ? '#16a34a' : 'var(--badge-warning-text)',
-                  }}
-                >
-                  {crit.status || crit.level || 'En progreso'}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
+            <form onSubmit={handleAddReview} style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+              <input
+                type="text"
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Agregar nota de revision..."
+                className="issues-search-input"
+                style={{ flex: 1, border: '1px solid var(--border-default)', borderRadius: 8, padding: '8px 12px' }}
+              />
+              <button type="submit" className="btn-new-event" style={{ padding: '8px 16px' }}>
+                Agregar
+              </button>
+            </form>
           </div>
-        </div>
-
-        {/* Notas y Revisiones Directas */}
-        <div className="student-team-card">
-          <h3 className="card-title-simple">Notas del profesor</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {directReviews.map((rev, idx) => (
-              <div
-                key={idx}
-                style={{
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  backgroundColor: 'var(--bg-sunken)',
-                  border: '1px solid var(--border-default)',
-                }}
-              >
-                <span style={{ fontSize: '0.688rem', color: 'var(--text-muted)', display: 'block' }}>
-                  {rev.date}
-                </span>
-                <p style={{ fontSize: '0.813rem', color: 'var(--text-primary)', marginTop: 2 }}>
-                  {rev.note}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <form onSubmit={handleAddReview} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
-            <input
-              type="text"
-              placeholder="Nueva nota para el grupo..."
-              value={newNote}
-              onChange={(e) => setNewNote(e.target.value)}
-              className="issues-search-input"
-              style={{
-                border: '1px solid var(--border-default)',
-                borderRadius: 8,
-                padding: '8px 12px',
-                fontSize: '0.813rem',
-              }}
-            />
-            <button
-              type="submit"
-              disabled={!newNote.trim()}
-              className="btn-new-event"
-              style={{ padding: '7px 12px', fontSize: '0.781rem', justifyContent: 'center' }}
-            >
-              Agregar nota
-            </button>
-          </form>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

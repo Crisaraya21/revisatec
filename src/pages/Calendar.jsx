@@ -1,17 +1,10 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { api } from '../lib/apiClient';
 import { Icons } from '../components/Icons';
 import './Calendar.css';
 
 export default function Calendar() {
-  const [events, setEvents] = useState([
-    { id: 1, title: 'Avance 1', date: '2026-09-30', type: 'green' },
-    { id: 2, title: 'Entrega 2', date: '2026-10-02', type: 'blue' },
-    { id: 3, title: 'Avance repo.', date: '2026-10-07', type: 'blue' },
-    { id: 4, title: 'Presentación', date: '2026-10-16', type: 'blue' },
-    { id: 5, title: 'Avance 3', date: '2026-10-23', type: 'blue' },
-    { id: 6, title: 'Entrega final', date: '2026-10-30', type: 'amber' },
-  ]);
+  const [events, setEvents] = useState([]);
 
   // Estados de toggles para avisos automáticos (Figma)
   const [notifWeekly, setNotifWeekly] = useState(true);
@@ -39,11 +32,12 @@ export default function Calendar() {
             date: item.date,
             type: index % 2 === 0 ? 'blue' : 'green',
           }));
-          setEvents((prev) => [...prev, ...apiEvents]);
+          setEvents(apiEvents);
         }
       } catch (err) {
         console.error('Error al cargar eventos de Azure APIM:', err);
-        setApiError('Error de conexión con Azure APIM (/calendar/events): El servicio no responde o se interrumpió la conexión.');
+        setApiError('Error de conexion con Azure APIM (/calendar/events): El servicio no responde o se interrumpio la conexion.');
+        setEvents([]);
       }
     }
     loadEvents();

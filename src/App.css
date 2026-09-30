@@ -301,6 +301,44 @@
   padding: 8px 12px 0 12px;
 }
 
+/* Sidebar Desplegable / Colapsable en Computadora (Escritorio) */
+.sidebar.collapsed {
+  width: 68px;
+  padding: 20px 8px 16px 8px;
+}
+
+.sidebar.collapsed .sidebar-category,
+.sidebar.collapsed .sidebar-link-content span,
+.sidebar.collapsed .sidebar-badge,
+.sidebar.collapsed .sidebar-footer-container {
+  display: none !important;
+}
+
+.sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 10px;
+  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+}
+
+.sidebar.collapsed .sidebar-link-content {
+  justify-content: center;
+  gap: 0;
+}
+
+.sidebar-toggle-btn {
+  margin-right: 6px;
+}
+
+@media (max-width: 640px) {
+  .sidebar-toggle-btn {
+    display: none;
+  }
+}
+
+
 /* Área de contenido */
 .page-wrapper {
   flex: 1;

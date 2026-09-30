@@ -80,3 +80,173 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
   min-height: 100vh;
 }
+
+/* ========================================================
+   ANIMACIONES GLOBALES AL PASAR EL CURSOR (HOVER EFFECTS)
+   ======================================================== */
+
+/* Botones y elementos cliqueables */
+button,
+.btn-new-event,
+.btn-publish-feedback,
+.btn-use-base,
+.btn-discard,
+.btn-review-issue,
+.btn-view-my-group,
+.btn-refresh-analysis,
+.btn-login-primary,
+.btn-login-google,
+.select-view-btn,
+.icon-circle-btn,
+.page-num-btn {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+button:hover:not(:disabled),
+.btn-new-event:hover,
+.btn-publish-feedback:hover,
+.btn-use-base:hover,
+.btn-view-my-group:hover,
+.btn-refresh-analysis:hover,
+.btn-login-primary:hover,
+.btn-login-google:hover,
+.select-view-btn:hover,
+.icon-circle-btn:hover {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 6px 18px rgba(43, 108, 176, 0.2) !important;
+}
+
+button:active:not(:disabled),
+.btn-new-event:active,
+.btn-publish-feedback:active,
+.btn-login-primary:active,
+.btn-login-google:active,
+.select-view-btn:active,
+.icon-circle-btn:active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 2px 6px rgba(43, 108, 176, 0.12) !important;
+}
+
+/* Tarjetas y Contenedores */
+.metric-card,
+.student-metric-card,
+.figma-widget-card,
+.calendar-card,
+.criteria-card,
+.ai-proposal-card,
+.professor-version-card,
+.student-progress-card,
+.student-team-card,
+.student-dates-card,
+.auto-notifications-card,
+.login-card {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.25s ease !important;
+}
+
+.metric-card:hover,
+.student-metric-card:hover,
+.figma-widget-card:hover,
+.criteria-card:hover,
+.student-progress-card:hover,
+.student-team-card:hover,
+.student-dates-card:hover,
+.auto-notifications-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 10px 25px rgba(43, 108, 176, 0.1) !important;
+}
+
+/* Filas de tablas interactivas */
+tbody tr {
+  transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+tbody tr:hover {
+  transform: scale(1.002) translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* Filas de listas (eventos, compañeros, issues) */
+.event-row,
+.team-member-row,
+.student-date-item,
+.issue-mini-row,
+.toggle-row,
+.criterion-row {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.2s ease !important;
+}
+
+.event-row:hover,
+.team-member-row:hover,
+.student-date-item:hover,
+.issue-mini-row:hover {
+  transform: translateX(4px);
+}
+
+/* Enlaces, Píldoras y Badges */
+.repo-slug-link,
+.pill-filter-btn,
+.status-pill,
+.widget-footer-link,
+.sidebar-link {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.repo-slug-link:hover {
+  transform: translateY(-1px);
+}
+
+.widget-footer-link:hover svg,
+.btn-review-issue:hover svg {
+  transform: translateX(4px);
+  transition: transform 0.2s ease;
+}
+
+.status-pill:hover {
+  transform: scale(1.05);
+}
+
+.pill-filter-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Celdas del Calendario */
+.calendar-cell {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.15s ease, 
+              box-shadow 0.2s ease !important;
+}
+
+.calendar-cell:hover {
+  transform: scale(1.02);
+  z-index: 2;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.event-pill {
+  transition: transform 0.15s ease, filter 0.15s ease !important;
+}
+
+.event-pill:hover {
+  transform: scale(1.05);
+  filter: brightness(1.08);
+}
+
+/* Inputs y Selects */
+input, select, textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease !important;
+}
+
+input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+input:focus, select:focus, textarea:focus {
+  transform: translateY(-1px);
+  border-color: var(--action-primary) !important;
+  box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15) !important;
+}
+

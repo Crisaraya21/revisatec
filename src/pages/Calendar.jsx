@@ -24,10 +24,13 @@ export default function Calendar() {
   const [newDate, setNewDate] = useState('2026-10-15');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [apiError, setApiError] = useState(null);
+
   // Cargar eventos desde Azure APIM (/calendar/events)
   useEffect(() => {
     async function loadEvents() {
       try {
+        setApiError(null);
         const res = await api.get('/calendar/events');
         if (res?.items?.length > 0) {
           const apiEvents = res.items.map((item, index) => ({
@@ -36,11 +39,11 @@ export default function Calendar() {
             date: item.date,
             type: index % 2 === 0 ? 'blue' : 'green',
           }));
-          // Fusionar con los del diseño para tener el calendario completo de Figma
           setEvents((prev) => [...prev, ...apiEvents]);
         }
       } catch (err) {
-        console.warn('Usando eventos locales para el calendario:', err);
+        console.error('Error al cargar eventos de Azure APIM:', err);
+        setApiError('Error de conexión con Azure APIM (/calendar/events): El servicio no responde o se interrumpió la conexión.');
       }
     }
     loadEvents();
@@ -136,6 +139,18 @@ export default function Calendar() {
           </button>
         </div>
       </div>
+
+      {apiError && (
+        <div style={{ backgroundColor: 'var(--badge-alert-bg)', color: 'var(--badge-alert-text)', border: '1px solid var(--badge-alert-border)', padding: '16px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Icons.AlertTriangle />
+            <span style={{ fontSize: '0.844rem', fontWeight: 600 }}>{apiError}</span>
+          </div>
+          <button type="button" onClick={() => window.location.reload()} className="btn-new-event" style={{ padding: '6px 14px', fontSize: '0.813rem' }}>
+            Reintentar
+          </button>
+        </div>
+      )}
 
       {/* Grid Principal: Calendario (Izquierda) + Widgets (Derecha) */}
       <div className="calendar-main-grid">

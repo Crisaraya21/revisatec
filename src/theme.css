@@ -1,0 +1,252 @@
+:root[data-theme='light'] {
+  /* Fondo general con tono celeste San Marino más distinguible */
+  --bg-page: #e8eef6;
+  --bg-surface: #ffffff;
+  --bg-sunken: #dce7f3;
+  --bg-card: #ffffff;
+  
+  /* Bordes celestes definidos para separar nítidamente las tarjetas */
+  --border-default: #cbdcec;
+  --border-strong: #9dbedc;
+  
+  --text-primary: #192738;
+  --text-secondary: #2b5279;
+  --text-muted: #396fa2;
+  
+  --action-primary: #2b6cb0;
+  --action-primary-hover: #1e4f8a;
+  --action-on-primary: #ffffff;
+  
+  --nav-active-bg: #d6e6f7;
+  --nav-active-text: #1e4f8a;
+  
+  --badge-warning-bg: #fef3c7;
+  --badge-warning-text: #b45309;
+  --badge-warning-border: #fde68a;
+  
+  --badge-info-bg: #dbeefe;
+  --badge-info-text: #1d4ed8;
+  --badge-info-border: #bfdbfe;
+  
+  --table-th-bg: #dbe7f5;
+  --table-th-text: #2b5279;
+
+  --sidebar-help-bg: #e1edf8;
+  --sidebar-help-border: #cbdcec;
+}
+
+:root[data-theme='dark'] {
+  --bg-page: #0b1118;
+  --bg-surface: #0f1722;
+  --bg-sunken: #14202e;
+  --bg-card: #131f2d;
+  --border-default: #1c2d40;
+  --border-strong: #273e57;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --action-primary: #3b82f6;
+  --action-primary-hover: #60a5fa;
+  --action-on-primary: #0f1722;
+  
+  --nav-active-bg: #1a2c42;
+  --nav-active-text: #60a5fa;
+  
+  --badge-warning-bg: #2d1d0c;
+  --badge-warning-text: #fbbf24;
+  --badge-warning-border: #4d3314;
+  
+  --badge-info-bg: #16273c;
+  --badge-info-text: #93c5fd;
+  --badge-info-border: #1e3a5f;
+  
+  --table-th-bg: #172638;
+  --table-th-text: #94a3b8;
+
+  --sidebar-help-bg: #152232;
+  --sidebar-help-border: #1e3650;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  min-height: 100vh;
+}
+
+/* ========================================================
+   ANIMACIONES GLOBALES AL PASAR EL CURSOR (HOVER EFFECTS)
+   ======================================================== */
+
+/* Botones y elementos cliqueables */
+button,
+.btn-new-event,
+.btn-publish-feedback,
+.btn-use-base,
+.btn-discard,
+.btn-review-issue,
+.btn-view-my-group,
+.btn-refresh-analysis,
+.btn-login-primary,
+.btn-login-google,
+.select-view-btn,
+.icon-circle-btn,
+.page-num-btn {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+button:hover:not(:disabled),
+.btn-new-event:hover,
+.btn-publish-feedback:hover,
+.btn-use-base:hover,
+.btn-view-my-group:hover,
+.btn-refresh-analysis:hover,
+.btn-login-primary:hover,
+.btn-login-google:hover,
+.select-view-btn:hover,
+.icon-circle-btn:hover {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 6px 18px rgba(43, 108, 176, 0.2) !important;
+}
+
+button:active:not(:disabled),
+.btn-new-event:active,
+.btn-publish-feedback:active,
+.btn-login-primary:active,
+.btn-login-google:active,
+.select-view-btn:active,
+.icon-circle-btn:active {
+  transform: scale(0.97) !important;
+  box-shadow: 0 2px 6px rgba(43, 108, 176, 0.12) !important;
+}
+
+/* Tarjetas y Contenedores */
+.metric-card,
+.student-metric-card,
+.figma-widget-card,
+.calendar-card,
+.criteria-card,
+.ai-proposal-card,
+.professor-version-card,
+.student-progress-card,
+.student-team-card,
+.student-dates-card,
+.auto-notifications-card,
+.login-card {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.25s ease !important;
+}
+
+.metric-card:hover,
+.student-metric-card:hover,
+.figma-widget-card:hover,
+.criteria-card:hover,
+.student-progress-card:hover,
+.student-team-card:hover,
+.student-dates-card:hover,
+.auto-notifications-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 10px 25px rgba(43, 108, 176, 0.1) !important;
+}
+
+/* Filas de tablas interactivas */
+tbody tr {
+  transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+tbody tr:hover {
+  transform: scale(1.002) translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+
+/* Filas de listas (eventos, compañeros, issues) */
+.event-row,
+.team-member-row,
+.student-date-item,
+.issue-mini-row,
+.toggle-row,
+.criterion-row {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.2s ease !important;
+}
+
+.event-row:hover,
+.team-member-row:hover,
+.student-date-item:hover,
+.issue-mini-row:hover {
+  transform: translateX(4px);
+}
+
+/* Enlaces, Píldoras y Badges */
+.repo-slug-link,
+.pill-filter-btn,
+.status-pill,
+.widget-footer-link,
+.sidebar-link {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.repo-slug-link:hover {
+  transform: translateY(-1px);
+}
+
+.widget-footer-link:hover svg,
+.btn-review-issue:hover svg {
+  transform: translateX(4px);
+  transition: transform 0.2s ease;
+}
+
+.status-pill:hover {
+  transform: scale(1.05);
+}
+
+.pill-filter-btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Celdas del Calendario */
+.calendar-cell {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.15s ease, 
+              box-shadow 0.2s ease !important;
+}
+
+.calendar-cell:hover {
+  transform: scale(1.02);
+  z-index: 2;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.event-pill {
+  transition: transform 0.15s ease, filter 0.15s ease !important;
+}
+
+.event-pill:hover {
+  transform: scale(1.05);
+  filter: brightness(1.08);
+}
+
+/* Inputs y Selects */
+input, select, textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease !important;
+}
+
+input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+input:focus, select:focus, textarea:focus {
+  transform: translateY(-1px);
+  border-color: var(--action-primary) !important;
+  box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15) !important;
+}
+

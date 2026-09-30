@@ -1,0 +1,445 @@
+/* ========================================================
+   STUDENT DASHBOARD - DISEÑO Y ANIMACIONES MODERNAS
+   ======================================================== */
+
+@keyframes cardSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fillBar {
+  from {
+    width: 0%;
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(57, 111, 162, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(57, 111, 162, 0);
+  }
+}
+
+.student-dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  animation: fadeInView 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Header */
+.student-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  animation: cardSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.student-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.student-welcome-title {
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.student-group-subtitle {
+  font-size: 0.813rem;
+  color: var(--text-muted);
+}
+
+.btn-view-my-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-view-my-group:hover {
+  background-color: var(--bg-sunken);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.btn-view-my-group:active {
+  transform: scale(0.97);
+}
+
+/* 3 Métricas con entrada escalonada y elevación suave */
+.student-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.student-metric-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cardSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.student-metric-card:nth-child(1) {
+  animation-delay: 0.06s;
+}
+
+.student-metric-card:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.student-metric-card:nth-child(3) {
+  animation-delay: 0.18s;
+}
+
+.student-metric-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--action-primary);
+  box-shadow: 0 8px 22px rgba(57, 111, 162, 0.08);
+}
+
+.student-metric-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.student-metric-val {
+  font-size: 1.563rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.metric-denom {
+  font-size: 0.938rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.student-metric-caption {
+  font-size: 0.719rem;
+  color: var(--text-muted);
+}
+
+.student-metric-caption.text-warning {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+/* Main Grid */
+.student-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.card-title-simple {
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Card: Avance del Grupo */
+.student-progress-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cardSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: 0.22s;
+}
+
+.student-progress-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+}
+
+.overall-progress-bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.overall-track {
+  width: 100%;
+  height: 8px;
+  background-color: var(--border-default);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.overall-fill {
+  height: 100%;
+  background-color: var(--action-primary);
+  border-radius: 4px;
+  animation: fillBar 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.overall-caption {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.student-criteria-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.student-crit-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: transform 0.15s ease;
+}
+
+.student-crit-row:hover {
+  transform: translateX(2px);
+}
+
+.student-crit-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.813rem;
+  font-weight: 600;
+}
+
+.crit-name {
+  color: var(--text-primary);
+}
+
+.crit-percent {
+  color: var(--text-secondary);
+}
+
+.crit-track {
+  width: 100%;
+  height: 6px;
+  background-color: var(--border-default);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.crit-fill {
+  height: 100%;
+  background-color: var(--action-primary);
+  border-radius: 3px;
+  animation: fillBar 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Card: Mi Equipo */
+.student-team-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cardSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: 0.28s;
+}
+
+.student-team-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+}
+
+.team-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.team-member-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.team-member-row:hover {
+  background-color: var(--bg-sunken);
+  transform: translateX(4px);
+}
+
+.member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--bg-sunken);
+  border: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.member-avatar.is-me {
+  background-color: rgba(57, 111, 162, 0.15);
+  border-color: var(--action-primary);
+  color: var(--action-primary);
+  animation: pulseGlow 2.5s infinite ease-in-out;
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.member-name {
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.member-contribution {
+  font-size: 0.719rem;
+  color: var(--text-muted);
+}
+
+/* Card: Próximas Fechas */
+.student-dates-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cardSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: 0.34s;
+}
+
+.student-dates-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+}
+
+.student-dates-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.student-date-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.2s ease;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.student-date-item:hover {
+  background-color: var(--bg-sunken);
+  transform: translateX(4px);
+}
+
+.student-date-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.student-date-item:hover .student-date-badge {
+  transform: scale(1.05);
+  border-color: var(--action-primary);
+}
+
+.badge-month {
+  background-color: var(--bg-sunken);
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.badge-day {
+  background-color: var(--bg-surface);
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.student-date-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.date-title {
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.date-sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 860px) {
+  .student-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-main-grid {
+    grid-template-columns: 1fr;
+  }
+}

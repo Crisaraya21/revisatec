@@ -1,17 +1,21 @@
 export const Icons = {
   Logo: () => (
-    <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-      <rect width="32" height="32" rx="8" fill="#2563eb" />
-      {/* Estilo bucle / trazo de estetoscopio o pulso de RevisaTEC */}
+    <svg width="30" height="30" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="32" height="32" rx="9" fill="#396fa2" />
+      {/* Línea vertical izquierda con terminación redondeada arriba */}
+      <line x1="11.5" y1="8" x2="11.5" y2="17" stroke="white" strokeWidth="2.8" strokeLinecap="round" />
+      {/* Rama curva hacia el nodo superior derecho */}
       <path
-        d="M9 13C9 10.79 10.79 9 13 9C15.21 9 17 10.79 17 13V19C17 21.21 18.79 23 21 23C23.21 23 25 21.21 25 19V17"
+        d="M12.5 18.5 C15.5 18.5 18 15.5 20.2 11.5"
         stroke="white"
-        strokeWidth="2.5"
+        strokeWidth="2.8"
         strokeLinecap="round"
-        strokeLinejoin="round"
+        fill="none"
       />
-      <circle cx="9" cy="14" r="1.5" fill="white" />
-      <circle cx="25" cy="17" r="1.5" fill="white" />
+      {/* Nodo circular inferior izquierdo con centro transparente */}
+      <circle cx="11.5" cy="19.5" r="2.7" stroke="white" strokeWidth="2.5" fill="none" />
+      {/* Nodo circular superior derecho con centro transparente */}
+      <circle cx="20.5" cy="10.5" r="2.7" stroke="white" strokeWidth="2.5" fill="none" />
     </svg>
   ),
   Search: () => (

@@ -1,36 +1,82 @@
-/* Pega esto en tu index.css o App.css.
-   Los mismos nombres que usamos en Figma (bg, surface, text, action...) */
-
 :root[data-theme='light'] {
-  --bg-page: #f4f7fb;
+  /* Fondo general con tono celeste San Marino más distinguible */
+  --bg-page: #e8eef6;
   --bg-surface: #ffffff;
-  --bg-sunken: #e8eef6;
+  --bg-sunken: #dce7f3;
+  --bg-card: #ffffff;
+  
+  /* Bordes celestes definidos para separar nítidamente las tarjetas */
   --border-default: #cbdcec;
   --border-strong: #9dbedc;
+  
   --text-primary: #192738;
   --text-secondary: #2b5279;
   --text-muted: #396fa2;
-  --action-primary: #396fa2;
-  --action-primary-hover: #2b5279;
+  
+  --action-primary: #2b6cb0;
+  --action-primary-hover: #1e4f8a;
   --action-on-primary: #ffffff;
+  
+  --nav-active-bg: #d6e6f7;
+  --nav-active-text: #1e4f8a;
+  
+  --badge-warning-bg: #fef3c7;
+  --badge-warning-text: #b45309;
+  --badge-warning-border: #fde68a;
+  
+  --badge-info-bg: #dbeefe;
+  --badge-info-text: #1d4ed8;
+  --badge-info-border: #bfdbfe;
+  
+  --table-th-bg: #dbe7f5;
+  --table-th-text: #2b5279;
+
+  --sidebar-help-bg: #e1edf8;
+  --sidebar-help-border: #cbdcec;
 }
 
 :root[data-theme='dark'] {
-  --bg-page: #192738;
-  --bg-surface: #253c55;
-  --bg-sunken: #274665;
-  --border-default: #2b5279;
-  --border-strong: #396fa2;
-  --text-primary: #f4f7fb;
-  --text-secondary: #cbdcec;
-  --text-muted: #9dbedc;
-  --action-primary: #699cc7;
-  --action-primary-hover: #9dbedc;
-  --action-on-primary: #192738;
+  --bg-page: #0b1118;
+  --bg-surface: #0f1722;
+  --bg-sunken: #14202e;
+  --bg-card: #131f2d;
+  --border-default: #1c2d40;
+  --border-strong: #273e57;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --action-primary: #3b82f6;
+  --action-primary-hover: #60a5fa;
+  --action-on-primary: #0f1722;
+  
+  --nav-active-bg: #1a2c42;
+  --nav-active-text: #60a5fa;
+  
+  --badge-warning-bg: #2d1d0c;
+  --badge-warning-text: #fbbf24;
+  --badge-warning-border: #4d3314;
+  
+  --badge-info-bg: #16273c;
+  --badge-info-text: #93c5fd;
+  --badge-info-border: #1e3a5f;
+  
+  --table-th-bg: #172638;
+  --table-th-text: #94a3b8;
+
+  --sidebar-help-bg: #152232;
+  --sidebar-help-border: #1e3650;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--bg-page);
+  background-color: var(--bg-page);
   color: var(--text-primary);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  min-height: 100vh;
 }

@@ -1,0 +1,500 @@
+/* Calendario de Entregas y Eventos */
+.calendar-page-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  animation: fadeInView 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Encabezado */
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.calendar-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.calendar-title {
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.calendar-meta {
+  font-size: 0.813rem;
+  color: var(--text-muted);
+}
+
+.calendar-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.select-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.select-view-btn:hover {
+  background-color: var(--bg-sunken);
+  border-color: var(--border-strong);
+}
+
+.btn-new-event {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--action-primary);
+  color: #ffffff;
+  border: none;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+  transition: all 0.2s ease;
+}
+
+.btn-new-event:hover {
+  background-color: var(--action-primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-new-event:active {
+  transform: scale(0.98);
+}
+
+/* Layout Principal: Calendario a la izquierda, Widgets a la derecha */
+.calendar-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Tarjeta Principal del Calendario */
+.calendar-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.calendar-nav-bar {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.calendar-month-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calendar-nav-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cal-nav-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.813rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cal-nav-btn:hover {
+  background-color: var(--bg-sunken);
+}
+
+/* Cuadrícula de Días */
+.calendar-grid-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.calendar-days-header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background-color: var(--table-th-bg);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.calendar-day-col-title {
+  padding: 10px;
+  text-align: center;
+  font-size: 0.688rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--table-th-text);
+}
+
+.calendar-month-cells {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background-color: var(--border-default);
+  gap: 1px;
+}
+
+.calendar-cell {
+  background-color: var(--bg-card);
+  min-height: 88px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.calendar-cell:hover {
+  background-color: var(--bg-sunken);
+}
+
+.calendar-cell.other-month {
+  background-color: var(--bg-page);
+  opacity: 0.6;
+}
+
+.cell-date-num {
+  font-size: 0.781rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.event-pill {
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 0.688rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.event-pill:hover {
+  transform: scale(1.02);
+}
+
+.event-pill.blue {
+  background-color: var(--badge-info-bg);
+  color: var(--badge-info-text);
+  border: 1px solid var(--badge-info-border);
+}
+
+.event-pill.green {
+  background-color: rgba(34, 197, 94, 0.12);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.event-pill.amber {
+  background-color: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+  border: 1px solid var(--badge-warning-border);
+}
+
+/* Columna Derecha de Widgets */
+.calendar-right-widgets {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.figma-widget-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.figma-widget-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+}
+
+.widget-card-heading {
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.upcoming-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.event-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: transform 0.2s ease;
+}
+
+.event-row:hover {
+  transform: translateX(2px);
+}
+
+.date-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.date-box-month {
+  background-color: var(--bg-sunken);
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.date-box-day {
+  background-color: var(--bg-surface);
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.event-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.event-title {
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.event-subtitle {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.widget-footer-link {
+  font-size: 0.813rem;
+  font-weight: 600;
+  color: var(--action-primary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.widget-footer-link:hover {
+  transform: translateX(3px);
+  opacity: 0.85;
+}
+
+
+/* Widget: Avisos Automáticos con Toggles */
+.auto-notifications-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.auto-notifications-title {
+  font-size: 0.938rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.toggles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toggle-label {
+  font-size: 0.813rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Switch Toggle iOS Style */
+.switch-toggle {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.switch-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-round {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background-color: var(--border-strong);
+  border-radius: 22px;
+  transition: 0.25s;
+}
+
+.slider-round:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.25s;
+}
+
+.switch-toggle input:checked + .slider-round {
+  background-color: var(--action-primary);
+}
+
+.switch-toggle input:checked + .slider-round:before {
+  transform: translateX(16px);
+}
+
+/* ========================================================
+   VISTA MÓVIL: LISTA DE EVENTOS EN VEZ DE GRID (Figma Móvil)
+   ======================================================== */
+.mobile-events-card {
+  display: none;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  padding: 20px;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mobile-events-heading {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mobile-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ========================================================
+   RESPONSIVE TABLET Y MÓVIL (Figma)
+   ======================================================== */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .calendar-main-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .calendar-right-widgets {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .calendar-header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .select-view-btn,
+  .btn-new-event {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .btn-new-event {
+    justify-content: center;
+  }
+
+  .calendar-main-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .calendar-card {
+    display: none; /* En móvil se oculta el grid de 35 celdas */
+  }
+
+  .mobile-events-card {
+    display: flex; /* En móvil se muestra la lista limpia de eventos */
+  }
+
+  .calendar-right-widgets {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}

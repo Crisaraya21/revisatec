@@ -1,9 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api } from '../lib/apiClient';
 import { Icons } from '../components/Icons';
 import './Groups.css';
+
+function formatEventDate(value) {
+  if (!value) return 'Fecha no disponible';
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? 'Fecha no disponible' : date.toLocaleDateString('es-CR');
+}
 
 export default function Groups() {
   const navigate = useNavigate();
@@ -26,6 +32,47 @@ export default function Groups() {
   const [newGroupRepo, setNewGroupRepo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modalError, setModalError] = useState(null);
+  const [courseName, setCourseName] = useState(null);
+  const [calendarEvents, setCalendarEvents] = useState(null);
+  const [dashboardIssues, setDashboardIssues] = useState(null);
+  const [feedbackPendingCount, setFeedbackPendingCount] = useState(null);
+  const [groupMemberCounts, setGroupMemberCounts] = useState({});
+
+  useEffect(() => {
+    if (status !== 'success') return undefined;
+
+    let cancelled = false;
+    async function loadOverview() {
+      const [coursesResult, calendarResult, issueResults, feedbackResults, memberResults] = await Promise.all([
+        api.get('/courses').catch(() => null),
+        api.get('/calendar/events').catch(() => null),
+        Promise.all(items.map((group) => api.get(`/groups/${group.id}/issues`).catch(() => null))),
+        Promise.all(items.map((group) => api.get(`/groups/${group.id}/feedback`).catch(() => null))),
+        Promise.all(items.map((group) => api.get(`/groups/${group.id}/members`).catch(() => null))),
+      ]);
+
+      if (!cancelled) {
+        setCourseName(coursesResult?.items?.[0]?.name || null);
+        setCalendarEvents(Array.isArray(calendarResult?.items) ? calendarResult.items : null);
+        setDashboardIssues(issueResults.some((result) => !result)
+          ? null
+          : issueResults.flatMap((result, index) => (result.items || []).map((issue) => ({
+            ...issue,
+            groupName: items[index].name,
+          }))));
+        setFeedbackPendingCount(feedbackResults.some((result) => !result)
+          ? null
+          : feedbackResults.filter((result) => !result.professor).length);
+        setGroupMemberCounts(Object.fromEntries(items.map((group, index) => [
+          group.id,
+          Array.isArray(memberResults[index]?.members) ? memberResults[index].members.length : null,
+        ])));
+      }
+    }
+
+    loadOverview();
+    return () => { cancelled = true; };
+  }, [items, status]);
 
   const handleCreateGroup = async (e) => {
     e.preventDefault();
@@ -50,9 +97,23 @@ export default function Groups() {
   };
 
   const formatRepoSlug = (url, fallbackName) => {
-    if (!url) return `revisatec/${fallbackName.toLowerCase().replace(/\s+/g, '-')}`;
+    if (!url) return fallbackName ? 'Repositorio no disponible' : '—';
     return url.replace(/^https?:\/\/(www\.)?github\.com\//, '');
   };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingEvents = (calendarEvents || [])
+    .filter((event) => {
+      if (!event.date) return false;
+      const date = new Date(`${event.date.slice(0, 10)}T00:00:00`);
+      return !Number.isNaN(date.getTime()) && date >= today;
+    })
+    .sort((left, right) => left.date.localeCompare(right.date));
+  const activeGroups = items.filter((group) => group.estado && group.estado.toLowerCase() !== 'completado').length;
+  const unresolvedIssues = dashboardIssues?.every((issue) => typeof issue.status === 'string')
+    ? dashboardIssues.filter((issue) => issue.status.toLowerCase() !== 'resuelto').length
+    : null;
 
   return (
     <div className="groups-page-container">
@@ -60,12 +121,14 @@ export default function Groups() {
       <div className="course-header">
         <div className="course-header-left">
           <h1 className="course-title">Resumen del curso</h1>
-          <span className="course-meta">Actualizado hace 5 min · Semestre II 2026</span>
+          <span className="course-meta">
+            {status === 'success' ? `${totalRecords} grupos cargados desde APIM` : 'Datos no disponibles desde APIM'}
+          </span>
         </div>
 
         <div className="course-header-right">
           <button type="button" className="course-selector-btn">
-            <span>Curso: Diseño de Software</span>
+            <span>{courseName ? `Curso: ${courseName}` : 'Curso no disponible desde APIM'}</span>
             <Icons.ChevronDown />
           </button>
           <button
@@ -88,8 +151,8 @@ export default function Groups() {
             </div>
             <span className="summary-card-title">Grupos activos</span>
           </div>
-          <div className="summary-card-number">{totalRecords || 12}</div>
-          <div className="summary-card-footer">+2 esta semana</div>
+          <div className="summary-card-number">{status === 'success' ? activeGroups : '—'}</div>
+          <div className="summary-card-footer">{status === 'success' ? `${totalRecords} en total` : 'No disponible desde APIM'}</div>
         </div>
 
         <div className="summary-card">
@@ -99,8 +162,10 @@ export default function Groups() {
             </div>
             <span className="summary-card-title">Próximas entregas</span>
           </div>
-          <div className="summary-card-number">3</div>
-          <div className="summary-card-footer">Próxima: vie 2 oct</div>
+          <div className="summary-card-number">{calendarEvents === null ? '—' : upcomingEvents.length}</div>
+          <div className="summary-card-footer">
+            {upcomingEvents[0] ? `Próxima: ${formatEventDate(upcomingEvents[0].date)}` : 'Sin próximas entregas en APIM'}
+          </div>
         </div>
 
         <div className="summary-card">
@@ -110,8 +175,10 @@ export default function Groups() {
             </div>
             <span className="summary-card-title">Inconvenientes</span>
           </div>
-          <div className="summary-card-number">4</div>
-          <div className="summary-card-footer">2 sin resolver</div>
+          <div className="summary-card-number">{dashboardIssues === null ? '—' : dashboardIssues.length}</div>
+          <div className="summary-card-footer">
+            {unresolvedIssues === null ? 'Estado no disponible desde APIM' : `${unresolvedIssues} sin resolver`}
+          </div>
         </div>
 
         <div className="summary-card">
@@ -121,8 +188,10 @@ export default function Groups() {
             </div>
             <span className="summary-card-title">Feedback pendiente</span>
           </div>
-          <div className="summary-card-number">7</div>
-          <div className="summary-card-footer">Por publicar</div>
+          <div className="summary-card-number">{feedbackPendingCount === null ? '—' : feedbackPendingCount}</div>
+          <div className="summary-card-footer">
+            {feedbackPendingCount === null ? 'No disponible desde APIM' : 'Por publicar'}
+          </div>
         </div>
       </div>
 
@@ -155,15 +224,14 @@ export default function Groups() {
           <div style={{ textAlign: 'center', padding: '24px' }}>No se encontraron grupos.</div>
         ) : (
           items.map((group, index) => {
-            const fallbackAvance = group.avance ?? (index === 0 ? 72 : index === 1 ? 35 : 88);
-            const fallbackEstado = group.estado ?? (index === 1 ? 'Alerta' : 'En curso');
+            const avance = Number.isFinite(Number(group.avance)) ? Number(group.avance) : null;
+            const estado = group.estado || null;
             const avatarCode = `G${group.id || index + 1}`;
 
             return (
               <div
                 key={group.id || index}
                 className="mobile-group-card"
-                onClick={() => navigate(`/groups/${group.id || index + 1}`)}
               >
                 <div className="mobile-card-top-row">
                   <div className="mobile-group-meta">
@@ -176,11 +244,11 @@ export default function Groups() {
 
                   <span
                     className={`status-pill ${
-                      fallbackEstado === 'Alerta' ? 'alert' : 'in-progress'
+                      estado === 'Alerta' ? 'alert' : 'in-progress'
                     }`}
                   >
-                    {fallbackEstado === 'Alerta' ? <Icons.AlertTriangle /> : <Icons.Clock />}
-                    <span>{fallbackEstado}</span>
+                    {estado === 'Alerta' ? <Icons.AlertTriangle /> : <Icons.Clock />}
+                    <span>{estado || 'Estado no disponible'}</span>
                   </span>
                 </div>
 
@@ -188,10 +256,10 @@ export default function Groups() {
                   <div className="progress-track">
                     <div
                       className="progress-fill"
-                      style={{ width: `${fallbackAvance}%` }}
+                      style={{ width: `${avance ?? 0}%` }}
                     ></div>
                   </div>
-                  <span className="progress-percentage">{fallbackAvance}%</span>
+                  <span className="progress-percentage">{avance === null ? '—' : `${avance}%`}</span>
                 </div>
               </div>
             );
@@ -203,7 +271,7 @@ export default function Groups() {
           className="mobile-view-all-btn"
           onClick={() => navigate('/groups')}
         >
-          Ver los {totalRecords || 12} grupos
+          Ver los {totalRecords} grupos
         </button>
       </div>
 
@@ -214,7 +282,7 @@ export default function Groups() {
           <div className="table-top-bar">
             <div className="table-title-area">
               <h2 className="table-main-title">Grupos</h2>
-              <span className="table-total-count">{totalRecords || items.length} en total</span>
+              <span className="table-total-count">{totalRecords} en total</span>
             </div>
 
             <div className="table-filters-area">
@@ -261,40 +329,38 @@ export default function Groups() {
                   <th className="col-repositorio">REPOSITORIO</th>
                   <th>AVANCE</th>
                   <th>ESTADO</th>
-                  <th style={{ width: 30 }}></th>
                 </tr>
               </thead>
               <tbody>
                 {status === 'loading' ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '36px' }}>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '36px' }}>
                       Cargando datos desde Azure APIM...
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '36px' }}>
+                    <td colSpan="4" style={{ textAlign: 'center', padding: '36px' }}>
                       No se encontraron grupos.
                     </td>
                   </tr>
                 ) : (
                   items.map((group, index) => {
-                    const fallbackAvance = group.avance ?? (index === 0 ? 72 : index === 1 ? 35 : 88);
-                    const fallbackEstado = group.estado ?? (index === 1 ? 'Alerta' : 'En curso');
-                    const membersCount = index === 0 ? 4 : index === 1 ? 3 : 5;
+                    const avance = Number.isFinite(Number(group.avance)) ? Number(group.avance) : null;
+                    const estado = group.estado || null;
+                    const memberCount = groupMemberCounts[group.id] ?? group.memberCount ?? null;
                     const avatarCode = `G${group.id || index + 1}`;
 
                     return (
-                      <tr
-                        key={group.id || index}
-                        onClick={() => navigate(`/groups/${group.id || index + 1}`)}
-                      >
+                      <tr key={group.id || index}>
                         <td>
                           <div className="group-info-flex">
                             <div className="group-avatar-badge">{avatarCode}</div>
                             <div className="group-titles">
                               <span className="group-name-title">{group.name}</span>
-                              <span className="group-members-count">{membersCount} integrantes</span>
+                              <span className="group-members-count">
+                                {memberCount == null ? 'Integrantes no disponibles' : `${memberCount} integrantes`}
+                              </span>
                             </div>
                           </div>
                         </td>
@@ -317,31 +383,28 @@ export default function Groups() {
                             <div className="progress-track">
                               <div
                                 className="progress-fill"
-                                style={{ width: `${fallbackAvance}%` }}
+                                style={{ width: `${avance ?? 0}%` }}
                               ></div>
                             </div>
-                            <span className="progress-percentage">{fallbackAvance}%</span>
+                            <span className="progress-percentage">{avance === null ? '—' : `${avance}%`}</span>
                           </div>
                         </td>
 
                         <td>
                           <span
                             className={`status-pill ${
-                              fallbackEstado === 'Alerta' ? 'alert' : 'in-progress'
+                              estado === 'Alerta' ? 'alert' : 'in-progress'
                             }`}
                           >
-                            {fallbackEstado === 'Alerta' ? (
+                            {estado === 'Alerta' ? (
                               <Icons.AlertTriangle />
                             ) : (
                               <Icons.Clock />
                             )}
-                            <span>{fallbackEstado}</span>
+                            <span>{estado || 'Estado no disponible'}</span>
                           </span>
                         </td>
 
-                        <td className="row-chevron">
-                          <Icons.ChevronRight />
-                        </td>
                       </tr>
                     );
                   })
@@ -353,7 +416,7 @@ export default function Groups() {
           {/* Footer de Paginación */}
           <div className="table-pagination-footer">
             <span className="pagination-text">
-              Mostrando {items.length > 0 ? `1-${items.length}` : '0'} de {totalRecords || items.length}
+              Mostrando {items.length > 0 ? `1-${items.length}` : '0'} de {totalRecords}
             </span>
 
             <div className="pagination-pages">
@@ -393,38 +456,29 @@ export default function Groups() {
           <div className="figma-widget-card">
             <h3 className="widget-card-heading">Próximas fechas</h3>
             <div className="upcoming-events-list">
-              <div className="event-row">
-                <div className="date-box">
-                  <span className="date-box-month">OCT</span>
-                  <span className="date-box-day">02</span>
-                </div>
-                <div className="event-details">
-                  <span className="event-title">Entrega 2: Prototipo</span>
-                  <span className="event-subtitle">Grupos 1, 3 y 5</span>
-                </div>
-              </div>
-
-              <div className="event-row">
-                <div className="date-box">
-                  <span className="date-box-month">OCT</span>
-                  <span className="date-box-day">07</span>
-                </div>
-                <div className="event-details">
-                  <span className="event-title">Avance de repositorio</span>
-                  <span className="event-subtitle">Todos los grupos</span>
-                </div>
-              </div>
-
-              <div className="event-row">
-                <div className="date-box">
-                  <span className="date-box-month">OCT</span>
-                  <span className="date-box-day">16</span>
-                </div>
-                <div className="event-details">
-                  <span className="event-title">Presentación parcial</span>
-                  <span className="event-subtitle">Grupos 2 y 4</span>
-                </div>
-              </div>
+              {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 3).map((event) => {
+                const date = new Date(`${event.date.slice(0, 10)}T00:00:00`);
+                return (
+                  <div key={event.id || `${event.date}-${event.title}`} className="event-row">
+                    <div className="date-box">
+                      <span className="date-box-month">
+                        {date.toLocaleDateString('es-CR', { month: 'short' }).replace('.', '').toUpperCase()}
+                      </span>
+                      <span className="date-box-day">{String(date.getDate()).padStart(2, '0')}</span>
+                    </div>
+                    <div className="event-details">
+                      <span className="event-title">{event.title}</span>
+                      {(event.subtitle || event.audience) && (
+                        <span className="event-subtitle">{event.subtitle || event.audience}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }) : (
+                <span className="event-subtitle">
+                  {calendarEvents === null ? 'Fechas no disponibles desde APIM.' : 'Sin próximas fechas en APIM.'}
+                </span>
+              )}
             </div>
 
             <a href="/calendar" className="widget-footer-link">
@@ -437,25 +491,23 @@ export default function Groups() {
           <div className="figma-widget-card">
             <h3 className="widget-card-heading">Inconvenientes recientes</h3>
             <div className="issues-mini-list">
-              <div className="issue-mini-row">
-                <div className="issue-icon-square">
-                  <Icons.AlertTriangle />
+              {dashboardIssues === null ? (
+                <span className="event-subtitle">Inconvenientes no disponibles desde APIM.</span>
+              ) : dashboardIssues.length > 0 ? dashboardIssues.slice(0, 2).map((issue, index) => (
+                <div key={issue.id || `${issue.groupName}-${issue.date}-${index}`} className="issue-mini-row">
+                  <div className="issue-icon-square">
+                    <Icons.AlertTriangle />
+                  </div>
+                  <div className="issue-mini-info">
+                    <span className="issue-mini-title">{issue.type || 'Tipo no disponible'}</span>
+                    <span className="issue-mini-meta">
+                      {issue.groupName || 'Grupo no disponible'} · {formatEventDate(issue.date)}
+                    </span>
+                  </div>
                 </div>
-                <div className="issue-mini-info">
-                  <span className="issue-mini-title">Commit de prueba</span>
-                  <span className="issue-mini-meta">Grupo 2 · hace 2 h</span>
-                </div>
-              </div>
-
-              <div className="issue-mini-row">
-                <div className="issue-icon-square">
-                  <Icons.AlertTriangle />
-                </div>
-                <div className="issue-mini-info">
-                  <span className="issue-mini-title">Error de entrega</span>
-                  <span className="issue-mini-meta">Grupo 5 · ayer</span>
-                </div>
-              </div>
+              )) : (
+                <span className="event-subtitle">Sin inconvenientes registrados en APIM.</span>
+              )}
             </div>
 
             <a href="/issues" className="widget-footer-link">

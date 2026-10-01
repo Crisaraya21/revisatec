@@ -6,6 +6,7 @@ import './StudentDashboard.css';
 export default function StudentGroup() {
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
+  const [membersUnavailable, setMembersUnavailable] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [repoInput, setRepoInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -15,19 +16,26 @@ export default function StudentGroup() {
     async function loadData() {
       setIsLoading(true);
       setApiError(null);
+      setMembersUnavailable(false);
       try {
         const res = await api.get('/groups/2');
         setGroup({
           id: 2,
-          name: res.name || 'Grupo 2',
+          name: res.name || null,
           repoUrl: res.repoUrl || '',
-          course: res.course || 'Diseno de Software',
-          avance: res.avance || 0,
+          course: res.course || null,
+          avance: res.avance ?? null,
         });
         setRepoInput(res.repoUrl || '');
 
-        const membersRes = await api.get('/groups/2/members');
-        setMembers(membersRes?.members || []);
+        try {
+          const membersRes = await api.get('/groups/2/members');
+          setMembers(membersRes?.members || []);
+        } catch (err) {
+          console.warn('No se pudieron cargar los integrantes del grupo:', err);
+          setMembers([]);
+          setMembersUnavailable(true);
+        }
       } catch (err) {
         console.error('Error al cargar datos del grupo:', err);
         setApiError('Error de conexion con Azure APIM: No se pudo cargar la informacion del grupo.');
@@ -59,7 +67,13 @@ export default function StudentGroup() {
       {/* Encabezado */}
       <div className="student-header">
         <div className="student-header-left">
-          <h1 className="student-welcome-title">{group ? group.name : 'Cargando...'}</h1>
+          <h1 className="student-welcome-title">
+            {group
+              ? group.name || 'Nombre no disponible desde APIM'
+              : isLoading
+                ? 'Cargando...'
+                : 'Grupo no disponible desde APIM'}
+          </h1>
           <span className="student-group-subtitle">
             {group?.repoUrl ? group.repoUrl.replace('https://github.com/', '') : ''} {group?.course ? `&middot; ${group.course}` : ''}
           </span>
@@ -142,7 +156,11 @@ export default function StudentGroup() {
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
                   Integrantes del equipo ({members.length})
                 </span>
-                {members.length === 0 ? (
+                {membersUnavailable ? (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.844rem' }}>
+                    Integrantes no disponibles desde APIM.
+                  </span>
+                ) : members.length === 0 ? (
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.844rem' }}>Sin integrantes registrados.</span>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -175,10 +193,10 @@ export default function StudentGroup() {
             <h3 className="card-title-simple">Avance del grupo</h3>
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                {group.avance}%
+                {group.avance === null ? '—' : `${group.avance}%`}
               </span>
               <span style={{ display: 'block', fontSize: '0.781rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                Completado segun rubrica
+                {group.avance === null ? 'Avance no disponible desde APIM' : 'Completado segun rubrica'}
               </span>
             </div>
           </div>

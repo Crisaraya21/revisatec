@@ -1,10 +1,44 @@
 ﻿import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api } from '../lib/apiClient';
 import { Icons } from '../components/Icons';
 import './Calendar.css';
 
+function parseEventDate(value) {
+  if (!value) return null;
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function CalendarEventRow({ event }) {
+  const date = parseEventDate(event.date);
+
+  return (
+    <div className="event-row">
+      <div className="date-box">
+        <span className="date-box-month">
+          {date ? date.toLocaleDateString('es-CR', { month: 'short' }).replace('.', '').toUpperCase() : '—'}
+        </span>
+        <span className="date-box-day">{date ? String(date.getDate()).padStart(2, '0') : '—'}</span>
+      </div>
+      <div className="event-details">
+        <span className="event-title">{event.title}</span>
+        {(event.subtitle || event.audience) && (
+          <span className="event-subtitle">{event.subtitle || event.audience}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Calendar() {
-  const [, setEvents] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [hoveredDay, setHoveredDay] = useState(null);
 
   // Estados de toggles para avisos automáticos (Figma)
   const [notifWeekly, setNotifWeekly] = useState(true);
@@ -14,7 +48,7 @@ export default function Calendar() {
   // Modal para agregar nuevo hito
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newDate, setNewDate] = useState('2026-10-15');
+  const [newDate, setNewDate] = useState(() => formatDateKey(new Date()));
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [apiError, setApiError] = useState(null);
@@ -25,14 +59,11 @@ export default function Calendar() {
       try {
         setApiError(null);
         const res = await api.get('/calendar/events');
-        if (res?.items?.length > 0) {
-          const apiEvents = res.items.map((item, index) => ({
-            id: item.id || index + 10,
-            title: item.title,
-            date: item.date,
-            type: index % 2 === 0 ? 'blue' : 'green',
-          }));
-          setEvents(apiEvents);
+        const apiEvents = Array.isArray(res?.items) ? res.items : [];
+        setEvents(apiEvents);
+        const firstEventDate = parseEventDate(apiEvents[0]?.date);
+        if (firstEventDate) {
+          setCurrentMonth(new Date(firstEventDate.getFullYear(), firstEventDate.getMonth(), 1));
         }
       } catch (err) {
         console.error('Error al cargar eventos de Azure APIM:', err);
@@ -53,10 +84,8 @@ export default function Calendar() {
         title: newTitle.trim(),
         date: newDate,
       });
-      setEvents((prev) => [
-        ...prev,
-        { id: Date.now(), title: newTitle.trim(), date: newDate, type: 'blue' },
-      ]);
+      const res = await api.get('/calendar/events');
+      setEvents(Array.isArray(res?.items) ? res.items : []);
       setNewTitle('');
       setIsModalOpen(false);
     } catch (err) {
@@ -66,48 +95,56 @@ export default function Calendar() {
     }
   };
 
-  // Cuadrícula de 35 celdas para Octubre 2026 (según Figma)
-  const monthDays = [
-    { day: 28, isOther: true, events: [] },
-    { day: 29, isOther: true, events: [] },
-    { day: 30, isOther: true, events: [{ title: 'Avance 1', type: 'green' }] },
-    { day: 1, isOther: false, events: [] },
-    { day: 2, isOther: false, events: [{ title: 'Entrega 2', type: 'blue' }] },
-    { day: 3, isOther: false, events: [] },
-    { day: 4, isOther: false, events: [] },
+  const firstOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+  const leadingDays = (firstOfMonth.getDay() + 6) % 7;
+  const gridStart = new Date(firstOfMonth);
+  gridStart.setDate(gridStart.getDate() - leadingDays);
+  const gridCellCount = Math.ceil((leadingDays + new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate()) / 7) * 7;
+  const calendarDays = Array.from({ length: gridCellCount }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const dateKey = formatDateKey(date);
 
-    { day: 5, isOther: false, events: [] },
-    { day: 6, isOther: false, events: [] },
-    { day: 7, isOther: false, events: [{ title: 'Avance repo.', type: 'blue' }] },
-    { day: 8, isOther: false, events: [] },
-    { day: 9, isOther: false, events: [] },
-    { day: 10, isOther: false, events: [] },
-    { day: 11, isOther: false, events: [] },
+    return {
+      date,
+      isOther: date.getMonth() !== currentMonth.getMonth(),
+      events: events.filter((event) => {
+        const eventDate = parseEventDate(event.date);
+        return eventDate && formatDateKey(eventDate) === dateKey;
+      }),
+    };
+  });
+  const sortedEvents = [...events].sort((left, right) => left.date.localeCompare(right.date));
+  const monthLabel = currentMonth.toLocaleDateString('es-CR', { month: 'long', year: 'numeric' });
+  const changeMonth = (offset) => {
+    setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + offset, 1));
+  };
+  const upcomingEvents = sortedEvents.filter((event) => {
+    const date = parseEventDate(event.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date && date >= today;
+  });
+  const showDayDetails = (date, dayEvents, target) => {
+    if (dayEvents.length === 0) return;
+    const rect = target.getBoundingClientRect();
+    const tooltipWidth = Math.min(240, window.innerWidth - 24);
+    const tooltipHeight = Math.min(140, 78 + dayEvents.length * 44);
+    const fitsBelow = rect.bottom + tooltipHeight + 8 <= window.innerHeight - 12;
+    const showAbove = !fitsBelow && rect.top >= tooltipHeight + 12;
+    const left = Math.max(12, Math.min(rect.left, window.innerWidth - tooltipWidth - 12));
+    const top = showAbove
+      ? rect.top - 8
+      : Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - tooltipHeight - 12));
 
-    { day: 12, isOther: false, events: [] },
-    { day: 13, isOther: false, events: [] },
-    { day: 14, isOther: false, events: [] },
-    { day: 15, isOther: false, events: [] },
-    { day: 16, isOther: false, events: [{ title: 'Presentación', type: 'blue' }] },
-    { day: 17, isOther: false, events: [] },
-    { day: 18, isOther: false, events: [] },
-
-    { day: 19, isOther: false, events: [] },
-    { day: 20, isOther: false, events: [] },
-    { day: 21, isOther: false, events: [] },
-    { day: 22, isOther: false, events: [] },
-    { day: 23, isOther: false, events: [{ title: 'Avance 3', type: 'blue' }] },
-    { day: 24, isOther: false, events: [] },
-    { day: 25, isOther: false, events: [] },
-
-    { day: 26, isOther: false, events: [] },
-    { day: 27, isOther: false, events: [] },
-    { day: 28, isOther: false, events: [] },
-    { day: 29, isOther: false, events: [] },
-    { day: 30, isOther: false, events: [{ title: 'Entrega final', type: 'amber' }] },
-    { day: 31, isOther: false, events: [] },
-    { day: 1, isOther: true, events: [] },
-  ];
+    setHoveredDay({
+      date,
+      events: dayEvents,
+      left,
+      top,
+      showAbove,
+    });
+  };
 
   return (
     <div className="calendar-page-container">
@@ -151,11 +188,11 @@ export default function Calendar() {
         {/* Tarjeta de Calendario (Escritorio y Tablet) */}
         <div className="calendar-card">
           <div className="calendar-nav-bar">
-            <h2 className="calendar-month-title">Octubre 2026</h2>
+            <h2 className="calendar-month-title">{monthLabel}</h2>
             <div className="calendar-nav-controls">
-              <button type="button" className="cal-nav-btn">&lt;</button>
-              <button type="button" className="cal-nav-btn">Hoy</button>
-              <button type="button" className="cal-nav-btn">&gt;</button>
+              <button type="button" className="cal-nav-btn" onClick={() => changeMonth(-1)}>&lt;</button>
+              <button type="button" className="cal-nav-btn" onClick={() => setCurrentMonth(new Date())}>Hoy</button>
+              <button type="button" className="cal-nav-btn" onClick={() => changeMonth(1)}>&gt;</button>
             </div>
           </div>
 
@@ -171,15 +208,25 @@ export default function Calendar() {
             </div>
 
             <div className="calendar-month-cells">
-              {monthDays.map((item, index) => (
+              {calendarDays.map(({ date, isOther, events: dayEvents }) => (
                 <div
-                  key={index}
-                  className={`calendar-cell ${item.isOther ? 'other-month' : ''}`}
+                  key={formatDateKey(date)}
+                  className={`calendar-cell ${isOther ? 'other-month' : ''}`}
+                  onMouseEnter={(event) => showDayDetails(date, dayEvents, event.currentTarget)}
+                  onMouseLeave={() => setHoveredDay(null)}
                 >
-                  <span className="cell-date-num">{item.day}</span>
-                  {item.events.map((ev, evIdx) => (
-                    <span key={evIdx} className={`event-pill ${ev.type}`}>
-                      {ev.title}
+                  <span className="cell-date-num">{date.getDate()}</span>
+                  {dayEvents.map((event) => (
+                    <span
+                      key={event.id || `${event.date}-${event.title}`}
+                      className={`event-pill ${event.type || 'blue'}`}
+                      aria-label={event.title}
+                      tabIndex={0}
+                      aria-describedby="calendar-day-tooltip"
+                      onFocus={(focusEvent) => showDayDetails(date, dayEvents, focusEvent.currentTarget)}
+                      onBlur={() => setHoveredDay(null)}
+                    >
+                      {event.title}
                     </span>
                   ))}
                 </div>
@@ -190,62 +237,13 @@ export default function Calendar() {
 
         {/* Tarjeta de Eventos en Móvil (reemplaza la cuadrícula en pantallas pequeñas según Figma) */}
         <div className="mobile-events-card">
-          <h2 className="mobile-events-heading">Octubre 2026</h2>
+          <h2 className="mobile-events-heading">{monthLabel}</h2>
           <div className="mobile-events-list">
-            <div className="event-row">
-              <div className="date-box">
-                <span className="date-box-month">OCT</span>
-                <span className="date-box-day">02</span>
-              </div>
-              <div className="event-details">
-                <span className="event-title">Entrega 2: Prototipo</span>
-                <span className="event-subtitle">Grupos 1, 3 y 5</span>
-              </div>
-            </div>
-
-            <div className="event-row">
-              <div className="date-box">
-                <span className="date-box-month">OCT</span>
-                <span className="date-box-day">07</span>
-              </div>
-              <div className="event-details">
-                <span className="event-title">Avance de repositorio</span>
-                <span className="event-subtitle">Todos los grupos</span>
-              </div>
-            </div>
-
-            <div className="event-row">
-              <div className="date-box">
-                <span className="date-box-month">OCT</span>
-                <span className="date-box-day">16</span>
-              </div>
-              <div className="event-details">
-                <span className="event-title">Presentación parcial</span>
-                <span className="event-subtitle">Grupos 2 y 4</span>
-              </div>
-            </div>
-
-            <div className="event-row">
-              <div className="date-box">
-                <span className="date-box-month">OCT</span>
-                <span className="date-box-day">23</span>
-              </div>
-              <div className="event-details">
-                <span className="event-title">Avance 3</span>
-                <span className="event-subtitle">Todos los grupos</span>
-              </div>
-            </div>
-
-            <div className="event-row">
-              <div className="date-box">
-                <span className="date-box-month">OCT</span>
-                <span className="date-box-day">30</span>
-              </div>
-              <div className="event-details">
-                <span className="event-title">Entrega final</span>
-                <span className="event-subtitle">Todos los grupos</span>
-              </div>
-            </div>
+            {upcomingEvents.length > 0 ? upcomingEvents.map((event) => (
+              <CalendarEventRow key={event.id || `${event.date}-${event.title}`} event={event} />
+            )) : (
+              <p className="event-subtitle">No hay eventos disponibles desde APIM.</p>
+            )}
           </div>
 
           <a href="#" onClick={(e) => e.preventDefault()} className="widget-footer-link">
@@ -260,38 +258,11 @@ export default function Calendar() {
           <div className="figma-widget-card">
             <h3 className="widget-card-heading">Próximas fechas</h3>
             <div className="upcoming-events-list">
-              <div className="event-row">
-                <div className="date-box">
-                  <span className="date-box-month">OCT</span>
-                  <span className="date-box-day">02</span>
-                </div>
-                <div className="event-details">
-                  <span className="event-title">Entrega 2: Prototipo</span>
-                  <span className="event-subtitle">Grupos 1, 3 y 5</span>
-                </div>
-              </div>
-
-              <div className="event-row">
-                <div className="date-box">
-                  <span className="date-box-month">OCT</span>
-                  <span className="date-box-day">07</span>
-                </div>
-                <div className="event-details">
-                  <span className="event-title">Avance de repositorio</span>
-                  <span className="event-subtitle">Todos los grupos</span>
-                </div>
-              </div>
-
-              <div className="event-row">
-                <div className="date-box">
-                  <span className="date-box-month">OCT</span>
-                  <span className="date-box-day">16</span>
-                </div>
-                <div className="event-details">
-                  <span className="event-title">Presentación parcial</span>
-                  <span className="event-subtitle">Grupos 2 y 4</span>
-                </div>
-              </div>
+              {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 3).map((event) => (
+                <CalendarEventRow key={event.id || `${event.date}-${event.title}`} event={event} />
+              )) : (
+                <p className="event-subtitle">No hay eventos disponibles desde APIM.</p>
+              )}
             </div>
 
             <a href="#" onClick={(e) => e.preventDefault()} className="widget-footer-link">
@@ -343,6 +314,34 @@ export default function Calendar() {
           </div>
         </div>
       </div>
+
+      {hoveredDay && (
+        createPortal(
+          <div
+            id="calendar-day-tooltip"
+            role="tooltip"
+            className={`calendar-event-tooltip ${hoveredDay.showAbove ? 'is-above' : ''}`}
+            style={{ left: hoveredDay.left, top: hoveredDay.top }}
+          >
+            <span className="calendar-tooltip-date">
+              {hoveredDay.date.toLocaleDateString('es-CR', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+              })}
+            </span>
+            {hoveredDay.events.map((event) => (
+              <div key={event.id || `${event.date}-${event.title}`} className="calendar-tooltip-event">
+                <strong>{event.title}</strong>
+                {(event.subtitle || event.audience) && (
+                  <span>{event.subtitle || event.audience}</span>
+                )}
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )
+      )}
 
       {/* Modal para Crear Nuevo Hito */}
       {isModalOpen && (

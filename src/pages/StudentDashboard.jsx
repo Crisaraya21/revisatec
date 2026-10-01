@@ -1,14 +1,19 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/apiClient';
+import { useAuth } from '../context/AuthContext';
 import { Icons } from '../components/Icons';
 import './StudentDashboard.css';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const studentFirstName = user?.name?.split(' ')[0] || 'Estudiante';
   const [groupInfo, setGroupInfo] = useState(null);
   const [criteria, setCriteria] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [membersUnavailable, setMembersUnavailable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(null);
 
@@ -16,21 +21,27 @@ export default function StudentDashboard() {
     async function loadStudentData() {
       setIsLoading(true);
       setApiError(null);
+      setMembersUnavailable(false);
       try {
         const groupRes = await api.get('/groups/2');
         setGroupInfo({
           id: 2,
           name: groupRes.name || 'Grupo 2',
           repoUrl: groupRes.repoUrl || '',
-          score: groupRes.score || 0,
-          myContribution: groupRes.myContribution || 0,
-          reviewedPRs: groupRes.reviewedPRs || '0 / 0',
-          unreviewedPRs: groupRes.unreviewedPRs || 0,
+          score: groupRes.score ?? null,
+          avance: groupRes.avance ?? null,
+          myContribution: groupRes.myContribution ?? null,
+          reviewedPRs: groupRes.reviewedPRs ?? null,
+          unreviewedPRs: groupRes.unreviewedPRs ?? null,
         });
 
         const analysisRes = await api.get('/groups/2/analysis');
-        if (analysisRes?.score !== undefined) {
-          setGroupInfo((prev) => ({ ...prev, score: analysisRes.score }));
+        if (analysisRes?.score !== undefined || analysisRes?.progress !== undefined) {
+          setGroupInfo((prev) => ({
+            ...prev,
+            score: analysisRes.score ?? prev?.score ?? null,
+            avance: analysisRes.progress ?? prev?.avance ?? null,
+          }));
         }
         if (analysisRes?.criteria?.length > 0) {
           setCriteria(analysisRes.criteria.map((c) => ({ name: c.name, percent: c.percent || 0 })));
@@ -38,8 +49,14 @@ export default function StudentDashboard() {
           setCriteria([]);
         }
 
-        const membersRes = await api.get('/groups/2/members');
-        setTeamMembers(membersRes?.members || []);
+        try {
+          const membersRes = await api.get('/groups/2/members');
+          setTeamMembers(membersRes?.members || []);
+        } catch (err) {
+          console.warn('No se pudieron cargar los integrantes del grupo:', err);
+          setTeamMembers([]);
+          setMembersUnavailable(true);
+        }
       } catch (err) {
         console.error('Error al cargar datos del estudiante:', err);
         setApiError('Error de conexion con Azure APIM: No se pudo cargar la informacion del grupo.');
@@ -53,16 +70,25 @@ export default function StudentDashboard() {
     loadStudentData();
   }, []);
 
+  useEffect(() => {
+    api.get('/calendar/events')
+      .then((res) => setUpcomingEvents(Array.isArray(res?.items) ? res.items : []))
+      .catch((err) => {
+        console.warn('No se pudieron cargar las próximas fechas:', err);
+        setUpcomingEvents([]);
+      });
+  }, []);
+
   return (
     <div className="student-dashboard-container">
       {/* Encabezado */}
       <div className="student-header">
         <div className="student-header-left">
-          <h1 className="student-welcome-title">
-            {groupInfo ? groupInfo.name : 'Cargando...'}
-          </h1>
+          <h1 className="student-welcome-title">Hola, {studentFirstName}</h1>
           <span className="student-group-subtitle">
-            {groupInfo?.repoUrl ? groupInfo.repoUrl.replace('https://github.com/', '') : ''}
+            {groupInfo
+              ? `Grupo ${groupInfo.id}${groupInfo.repoUrl ? ` · ${groupInfo.repoUrl.replace('https://github.com/', '')}` : ''}`
+              : 'Grupo no disponible desde APIM'}
           </span>
         </div>
 
@@ -94,75 +120,127 @@ export default function StudentDashboard() {
       {/* Contenido */}
       {!isLoading && !apiError && groupInfo && (
         <>
-          {/* Stats */}
-          <div className="student-stats-row">
-            <div className="student-stat-card">
-              <span className="stat-value">{groupInfo.score}</span>
-              <span className="stat-label">Nota actual</span>
+          <div className="student-metrics-grid">
+            <div className="student-metric-card">
+              <span className="student-metric-label">Nota estimada</span>
+              <span className="student-metric-val">
+                {groupInfo.score ?? '—'}<span className="metric-denom"> / 100</span>
+              </span>
+              <span className="student-metric-caption">Según la rúbrica</span>
             </div>
-            <div className="student-stat-card">
-              <span className="stat-value">{groupInfo.myContribution}%</span>
-              <span className="stat-label">Mi aporte</span>
+            <div className="student-metric-card">
+              <span className="student-metric-label">Mi aporte</span>
+              <span className="student-metric-val">
+                {groupInfo.myContribution === null ? '—' : `${groupInfo.myContribution}%`}
+              </span>
+              <span className="student-metric-caption">De la contribución total</span>
             </div>
-            <div className="student-stat-card">
-              <span className="stat-value">{groupInfo.reviewedPRs}</span>
-              <span className="stat-label">PRs revisados</span>
-            </div>
-            <div className="student-stat-card highlight">
-              <span className="stat-value">{groupInfo.unreviewedPRs}</span>
-              <span className="stat-label">Sin revisar</span>
+            <div className="student-metric-card">
+              <span className="student-metric-label">PRs revisados</span>
+              <span className="student-metric-val">{groupInfo.reviewedPRs ?? '—'}</span>
+              <span className={`student-metric-caption ${groupInfo.unreviewedPRs > 0 ? 'text-warning' : ''}`}>
+                {groupInfo.unreviewedPRs === null
+                  ? 'Estado no disponible desde APIM'
+                  : groupInfo.unreviewedPRs > 0
+                  ? `${groupInfo.unreviewedPRs} sin revisión`
+                  : 'Sin PRs pendientes'}
+              </span>
             </div>
           </div>
 
           <div className="student-main-grid">
-            {/* Criterios */}
-            {criteria.length > 0 && (
-              <div className="criteria-card">
-                <div className="criteria-card-header">
-                  <h3 className="criteria-card-title">Cumplimiento por criterio</h3>
+            <div className="student-progress-card">
+              <h2 className="card-title-simple">Avance del grupo</h2>
+              <div className="overall-progress-bar-wrap">
+                <div className="overall-track">
+                  <div
+                    className="overall-fill"
+                    style={{ width: `${Math.min(100, Math.max(0, groupInfo.avance ?? 0))}%` }}
+                  />
                 </div>
-                <div className="criteria-list">
-                  {criteria.map((item, index) => (
-                    <div key={index} className="criterion-row" style={{ animationDelay: `${index * 0.08}s` }}>
-                      <div className="criterion-info-top">
-                        <span className="criterion-name">{item.name}</span>
-                        <span className="criterion-fraction">{item.percent}%</span>
-                      </div>
-                      <div className="criterion-bar-row">
-                        <div className="criterion-track">
-                          <div
-                            className="criterion-fill info"
-                            style={{ width: `${item.percent}%`, transition: 'width 0.8s cubic-bezier(0.16,1,0.3,1)' }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <span className="overall-caption">
+                  {groupInfo.avance === null
+                    ? 'Avance no disponible desde APIM.'
+                    : `${groupInfo.avance}% completado según la rúbrica del curso`}
+                </span>
               </div>
-            )}
 
-            {/* Integrantes */}
-            {teamMembers.length > 0 && (
-              <div className="student-team-card">
-                <h3 className="card-title-simple">Integrantes del equipo</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {teamMembers.map((m, idx) => (
-                    <div
-                      key={idx}
-                      className="team-member-row"
-                      style={{ animationDelay: `${idx * 0.1}s` }}
-                    >
-                      <div className="member-avatar">{m.initials || m.name?.charAt(0)}</div>
-                      <div className="member-info">
-                        <span className="member-name">{m.name}</span>
-                        <span className="member-contribution">{m.contribution}</span>
+              {criteria.length > 0 ? (
+                <div className="student-criteria-bars">
+                  {criteria.map((item, index) => (
+                    <div key={index} className="student-crit-row">
+                      <div className="student-crit-header">
+                        <span className="crit-name">{item.name}</span>
+                        <span className="crit-percent">{item.percent}%</span>
+                      </div>
+                      <div className="crit-track">
+                        <div className="crit-fill" style={{ width: `${item.percent}%` }} />
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <span className="overall-caption">Criterios no disponibles desde APIM.</span>
+              )}
+            </div>
+
+            <div className="student-team-card">
+              <h2 className="card-title-simple">Mi equipo</h2>
+              {membersUnavailable ? (
+                <span className="student-metric-caption">
+                  Integrantes no disponibles desde APIM.
+                </span>
+              ) : teamMembers.length === 0 ? (
+                <span className="student-metric-caption">Sin integrantes registrados.</span>
+              ) : (
+                <div className="team-members-list">
+                  {teamMembers.map((member, index) => (
+                    <div key={index} className="team-member-row">
+                      <div className={`member-avatar ${member.email === user?.email ? 'is-me' : ''}`}>
+                        {member.initials || member.name?.charAt(0)}
+                      </div>
+                      <div className="member-info">
+                        <span className="member-name">
+                          {member.name}{member.email === user?.email ? ' (tú)' : ''}
+                        </span>
+                        <span className="member-contribution">{member.contribution} del aporte</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="student-dates-card">
+            <h2 className="card-title-simple">Próximas fechas</h2>
+            <div className="student-dates-list">
+              {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 3).map((event) => {
+                const date = event.date ? new Date(`${event.date.slice(0, 10)}T00:00:00`) : null;
+                return (
+                  <div key={event.id || `${event.date}-${event.title}`} className="student-date-item">
+                    <div className="student-date-badge">
+                      <span className="badge-month">
+                        {date && !Number.isNaN(date.getTime())
+                          ? date.toLocaleDateString('es-CR', { month: 'short' }).replace('.', '').toUpperCase()
+                          : '—'}
+                      </span>
+                      <span className="badge-day">
+                        {date && !Number.isNaN(date.getTime()) ? String(date.getDate()).padStart(2, '0') : '—'}
+                      </span>
+                    </div>
+                    <div className="student-date-details">
+                      <span className="date-title">{event.title}</span>
+                      {(event.subtitle || event.audience) && (
+                        <span className="date-sub">{event.subtitle || event.audience}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }) : (
+                <span className="date-sub">No hay fechas disponibles desde APIM.</span>
+              )}
+            </div>
           </div>
         </>
       )}

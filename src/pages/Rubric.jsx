@@ -64,22 +64,18 @@ const RubricIcons = {
 };
 
 export default function Rubric() {
-  // Criterios detectados (inicializados con los 5 del diseño de Figma)
-  const defaultCriteria = [
-    { name: 'Contribución equitativa', weight: 30 },
-    { name: 'Calidad de revisiones', weight: 25 },
-    { name: 'Cumplimiento de hitos', weight: 20 },
-    { name: 'Calidad de commits', weight: 15 },
-    { name: 'Documentación', weight: 10 },
-  ];
-
-  const defaultInstructions =
-    'Prioriza la calidad de las revisiones sobre la cantidad de commits. Un aporte cuenta más si fue revisado por un compañero. Ignora commits de formato o documentación menor. La retroalimentación debe ser breve, constructiva y con una sugerencia concreta.';
-
-  const [criteria, setCriteria] = useState(defaultCriteria);
-  const [instructions, setInstructions] = useState(defaultInstructions);
-  const [frequency, setFrequency] = useState('twice-daily');
-  const [minReviewers, setMinReviewers] = useState(1);
+  const [criteria, setCriteria] = useState([]);
+  const [instructions, setInstructions] = useState('');
+  const [frequency, setFrequency] = useState('');
+  const [minReviewers, setMinReviewers] = useState(null);
+  const [nextRunAt, setNextRunAt] = useState(null);
+  const [fileName, setFileName] = useState('');
+  const [interpretationStatus, setInterpretationStatus] = useState('');
+  const [courseName, setCourseName] = useState(null);
+  const [savedSettings, setSavedSettings] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+  const [saveError, setSaveError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
@@ -88,26 +84,47 @@ export default function Rubric() {
   // Cargar datos de la API de Azure APIM (/courses/1/...)
   useEffect(() => {
     async function loadCourseConfig() {
+      setIsLoading(true);
+      setApiError(null);
       try {
-        const rubricRes = await api.get('/courses/1/rubric');
-        if (rubricRes?.criteria?.length > 0) {
-          // Fusionar criterios si la API trae datos
-          setCriteria(rubricRes.criteria.length >= 3 ? rubricRes.criteria : defaultCriteria);
-        }
-
-        const instructionsRes = await api.get('/courses/1/instructions');
-        if (instructionsRes?.text) {
-          setInstructions(instructionsRes.text);
-        }
-
-        const configRes = await api.get('/courses/1/scraping-config');
-        if (configRes?.frequency) {
-          if (configRes.frequency === 'hourly') setFrequency('hourly');
-          else if (configRes.frequency === 'weekly') setFrequency('weekly');
-          else setFrequency('twice-daily');
-        }
+        const [coursesRes, rubricRes, instructionsRes, configRes] = await Promise.all([
+          api.get('/courses'),
+          api.get('/courses/1/rubric'),
+          api.get('/courses/1/instructions'),
+          api.get('/courses/1/scraping-config'),
+        ]);
+        const loadedSettings = {
+          criteria: Array.isArray(rubricRes?.criteria) ? rubricRes.criteria : [],
+          instructions: instructionsRes?.text || '',
+          frequency: configRes?.frequency || '',
+          minReviewers: configRes?.minReviewers ?? null,
+          nextRunAt: configRes?.nextRunAt || null,
+          fileName: rubricRes?.fileName || '',
+          interpretationStatus: rubricRes?.interpretationStatus || '',
+          courseName: coursesRes?.items?.find((course) => course.id === 1)?.name || null,
+        };
+        setCriteria(loadedSettings.criteria);
+        setInstructions(loadedSettings.instructions);
+        setFrequency(loadedSettings.frequency);
+        setMinReviewers(loadedSettings.minReviewers);
+        setNextRunAt(loadedSettings.nextRunAt);
+        setFileName(loadedSettings.fileName);
+        setInterpretationStatus(loadedSettings.interpretationStatus);
+        setCourseName(loadedSettings.courseName);
+        setSavedSettings(loadedSettings);
       } catch (err) {
-        console.warn('Usando valores locales de Figma para configuración del curso:', err);
+        console.error('Error al cargar la configuración desde APIM:', err);
+        setApiError('No se pudo cargar la configuración desde APIM.');
+        setCriteria([]);
+        setInstructions('');
+        setFrequency('');
+        setMinReviewers(null);
+        setNextRunAt(null);
+        setFileName('');
+        setInterpretationStatus('');
+        setCourseName(null);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -117,29 +134,37 @@ export default function Rubric() {
   const handleSave = async () => {
     setIsSaving(true);
     setSaveSuccess(false);
+    setSaveError(null);
     try {
-      // Guardar en Azure APIM (Endpoints del OpenAPI)
-      await Promise.allSettled([
+      await Promise.all([
         api.put('/courses/1/rubric', { criteria }),
         api.put('/courses/1/instructions', { text: instructions }),
         api.put('/courses/1/scraping-config', {
-          frequency: frequency === 'hourly' ? 'hourly' : frequency === 'weekly' ? 'weekly' : 'daily',
+          frequency,
+          minReviewers,
         }),
       ]);
+      setSavedSettings({ criteria, instructions, frequency, minReviewers, nextRunAt, fileName, interpretationStatus, courseName });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       console.error('Error al guardar configuración:', err);
+      setSaveError('No se pudieron guardar los cambios en APIM.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDiscard = () => {
-    setCriteria(defaultCriteria);
-    setInstructions(defaultInstructions);
-    setFrequency('twice-daily');
-    setMinReviewers(1);
+    if (!savedSettings) return;
+    setCriteria(savedSettings.criteria);
+    setInstructions(savedSettings.instructions);
+    setFrequency(savedSettings.frequency);
+    setMinReviewers(savedSettings.minReviewers);
+    setNextRunAt(savedSettings.nextRunAt);
+    setFileName(savedSettings.fileName);
+    setInterpretationStatus(savedSettings.interpretationStatus);
+    setCourseName(savedSettings.courseName);
   };
 
   const startEditWeight = (index) => {
@@ -160,7 +185,7 @@ export default function Rubric() {
       <div className="rubric-header">
         <div className="rubric-header-left">
           <h1 className="rubric-title">Configuración del curso</h1>
-          <span className="rubric-meta">Diseño de Software · Semestre II 2026</span>
+          <span className="rubric-meta">{courseName || 'Curso no disponible desde APIM'}</span>
         </div>
 
         <div className="rubric-header-actions">
@@ -170,7 +195,7 @@ export default function Rubric() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={isSaving}
+            disabled={isSaving || isLoading || Boolean(apiError) || criteria.length === 0 || !frequency || minReviewers === null}
             className="btn-save-primary"
           >
             <RubricIcons.CheckCircle />
@@ -178,6 +203,18 @@ export default function Rubric() {
           </button>
         </div>
       </div>
+
+      {(apiError || saveError) && (
+        <div role="alert" style={{ color: '#ef4444', padding: '12px 16px' }}>
+          {apiError || saveError}
+        </div>
+      )}
+
+      {isLoading && (
+        <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+          Cargando configuración desde APIM...
+        </div>
+      )}
 
       {/* Grid Principal (Columna Izquierda: Rúbrica e Indicaciones; Columna Derecha: Frecuencia y Reglas) */}
       <div className="rubric-grid-layout">
@@ -210,29 +247,32 @@ export default function Rubric() {
               </button>
             </div>
 
-            {/* Banner de Archivo Interpretado */}
-            <div className="uploaded-file-banner">
+            {fileName && (
+              <div className="uploaded-file-banner">
               <div className="file-info-left">
                 <span style={{ color: 'var(--action-primary)' }}>
                   <RubricIcons.FileText />
                 </span>
                 <div>
-                  <div className="file-name-text">Rubrica_Proyecto1.pdf</div>
+                  <div className="file-name-text">{fileName}</div>
                   <div className="file-meta-sub">{criteria.length} criterios detectados</div>
                 </div>
               </div>
 
-              <div className="badge-ai-interpreted">
-                <RubricIcons.CheckCircle />
-                <span>Interpretada por IA</span>
+              {interpretationStatus && (
+                <div className="badge-ai-interpreted">
+                  <RubricIcons.CheckCircle />
+                  <span>{interpretationStatus}</span>
+                </div>
+              )}
               </div>
-            </div>
+            )}
 
             {/* Criterios Detectados */}
             <div className="criteria-section">
               <span className="section-label">Criterios detectados</span>
               <div className="criteria-list">
-                {criteria.map((item, index) => (
+                {criteria.length > 0 ? criteria.map((item, index) => (
                   <div key={item.name} className="criterion-item">
                     <span className="criterion-name">{item.name}</span>
                     <div className="criterion-actions">
@@ -273,7 +313,9 @@ export default function Rubric() {
                       )}
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <span className="file-meta-sub">No hay criterios disponibles desde APIM.</span>
+                )}
               </div>
             </div>
           </div>
@@ -301,7 +343,7 @@ export default function Rubric() {
             />
 
             <div className="ai-instructions-footer">
-              <span>Sé específico: la IA sigue esto en cada análisis.</span>
+              <span>{instructions ? 'Indicaciones cargadas desde APIM.' : 'Indicaciones no disponibles desde APIM.'}</span>
               <span>{instructions.length} / 1000</span>
             </div>
           </div>
@@ -335,13 +377,13 @@ export default function Rubric() {
               </div>
 
               <div
-                className={`frequency-option-card ${frequency === 'twice-daily' ? 'selected' : ''}`}
-                onClick={() => setFrequency('twice-daily')}
+                className={`frequency-option-card ${frequency === 'daily' ? 'selected' : ''}`}
+                onClick={() => setFrequency('daily')}
               >
                 <div className="radio-indicator">
-                  {frequency === 'twice-daily' && <div className="radio-inner-dot"></div>}
+                  {frequency === 'daily' && <div className="radio-inner-dot"></div>}
                 </div>
-                <span>Dos veces al día</span>
+                <span>Una vez al día</span>
               </div>
 
               <div
@@ -357,7 +399,11 @@ export default function Rubric() {
 
             <div className="frequency-footer">
               <RubricIcons.Clock />
-              <span>Próximo análisis: hoy, 6:00 p. m.</span>
+              <span>
+                {nextRunAt
+                  ? `Próximo análisis: ${new Date(nextRunAt).toLocaleString('es-CR')}`
+                  : 'Próximo análisis no disponible desde APIM.'}
+              </span>
             </div>
           </div>
 
@@ -381,14 +427,16 @@ export default function Rubric() {
                 <button
                   type="button"
                   className="stepper-btn"
-                  onClick={() => setMinReviewers((v) => Math.max(1, v - 1))}
+                  disabled={minReviewers === null}
+                  onClick={() => setMinReviewers((value) => Math.max(1, value - 1))}
                 >
                   -
                 </button>
-                <span className="stepper-value">{minReviewers}</span>
+                <span className="stepper-value">{minReviewers ?? '—'}</span>
                 <button
                   type="button"
                   className="stepper-btn"
+                  disabled={minReviewers === null}
                   onClick={() => setMinReviewers((v) => v + 1)}
                 >
                   +
@@ -399,29 +447,21 @@ export default function Rubric() {
             <div className="criteria-section">
               <span className="section-label">Ponderación del score</span>
               <div className="score-weights-list">
-                <div className="score-weight-item">
-                  <span className="score-label">Código</span>
-                  <div className="score-progress-track">
-                    <div className="score-progress-fill" style={{ width: '40%' }}></div>
-                  </div>
-                  <span className="score-percentage">40%</span>
-                </div>
-
-                <div className="score-weight-item">
-                  <span className="score-label">Revisiones</span>
-                  <div className="score-progress-track">
-                    <div className="score-progress-fill" style={{ width: '40%' }}></div>
-                  </div>
-                  <span className="score-percentage">40%</span>
-                </div>
-
-                <div className="score-weight-item">
-                  <span className="score-label">Consistencia</span>
-                  <div className="score-progress-track">
-                    <div className="score-progress-fill" style={{ width: '20%' }}></div>
-                  </div>
-                  <span className="score-percentage">20%</span>
-                </div>
+                {criteria.length > 0 ? criteria.map((item) => {
+                  const weight = Number(item.weight);
+                  const width = Number.isFinite(weight) ? Math.min(100, Math.max(0, weight)) : 0;
+                  return (
+                    <div key={item.name} className="score-weight-item">
+                      <span className="score-label">{item.name}</span>
+                      <div className="score-progress-track">
+                        <div className="score-progress-fill" style={{ width: `${width}%` }}></div>
+                      </div>
+                      <span className="score-percentage">{Number.isFinite(weight) ? `${weight}%` : '—'}</span>
+                    </div>
+                  );
+                }) : (
+                  <span className="file-meta-sub">Ponderaciones no disponibles desde APIM.</span>
+                )}
               </div>
             </div>
           </div>

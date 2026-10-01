@@ -211,6 +211,46 @@
   vertical-align: middle;
 }
 
+.issues-status-heading,
+.issues-status-cell {
+  text-align: center;
+}
+
+.issue-status-button {
+  min-width: 130px;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.issue-status-button.is-open {
+  background-color: var(--badge-warning-bg);
+  border-color: var(--badge-warning-border);
+  color: var(--badge-warning-text);
+  cursor: pointer;
+}
+
+.issue-status-button.is-resolved {
+  background-color: var(--badge-info-bg);
+  border-color: var(--badge-info-border);
+  color: var(--badge-info-text);
+  cursor: pointer;
+}
+
+.issue-status-button.is-unavailable {
+  background-color: var(--bg-sunken);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
 .custom-issues-table tbody tr {
   transition: background-color 0.15s ease;
 }

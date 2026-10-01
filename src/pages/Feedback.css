@@ -244,6 +244,54 @@
   color: var(--text-secondary);
 }
 
+.ai-proposal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-use-ai,
+.btn-discard {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.813rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.btn-use-ai {
+  color: #ffffff;
+  background-color: var(--action-primary);
+  border: 1px solid var(--action-primary);
+  box-shadow: 0 2px 5px rgba(37, 99, 235, 0.16);
+}
+
+.btn-use-ai:hover:not(:disabled) {
+  background-color: var(--action-primary-hover);
+  border-color: var(--action-primary-hover);
+  box-shadow: 0 3px 8px rgba(37, 99, 235, 0.22);
+  transform: translateY(-1px);
+}
+
+.btn-use-ai:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-use-ai:focus-visible,
+.btn-discard:focus-visible {
+  outline: 3px solid rgba(57, 111, 162, 0.28);
+  outline-offset: 2px;
+}
+
 .ai-proposal-footer {
   display: flex;
   justify-content: flex-end;
@@ -377,19 +425,14 @@
 }
 
 .btn-discard {
-  padding: 8px 16px;
-  border-radius: 8px;
   border: 1px solid var(--border-default);
-  background: transparent;
+  background-color: var(--bg-surface);
   color: var(--text-primary);
-  font-size: 0.813rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
 }
 
 .btn-discard:hover {
   background-color: var(--bg-sunken);
+  border-color: var(--border-strong);
 }
 
 .btn-publish-feedback {

@@ -4,7 +4,9 @@ import { Icons } from '../components/Icons';
 import './Feedback.css';
 
 export default function Feedback() {
-  const [selectedGroupId, setSelectedGroupId] = useState(2);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const [deliveryTitle, setDeliveryTitle] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
@@ -14,8 +16,22 @@ export default function Feedback() {
   const [professorText, setProfessorText] = useState('');
   const [criteria, setCriteria] = useState([]);
 
+  useEffect(() => {
+    api.get('/groups?page=1&pageSize=100&search=')
+      .then((res) => {
+        const nextGroups = Array.isArray(res?.items) ? res.items : [];
+        setGroups(nextGroups);
+        setSelectedGroupId((current) => current ?? nextGroups[0]?.id ?? null);
+      })
+      .catch((err) => {
+        console.error('Error al cargar grupos para feedback:', err);
+        setApiError('No se pudieron cargar los grupos desde APIM.');
+      });
+  }, []);
+
   // Cargar datos de Azure APIM (/groups/{id}/feedback y /groups/{id}/analysis)
   useEffect(() => {
+    if (selectedGroupId === null) return;
     async function loadGroupFeedback() {
       setIsLoading(true);
       setApiError(null);
@@ -23,6 +39,7 @@ export default function Feedback() {
         const feedbackRes = await api.get(`/groups/${selectedGroupId}/feedback`);
         setAiFeedback(feedbackRes?.ai || '');
         setProfessorText(feedbackRes?.professor || '');
+        setDeliveryTitle(feedbackRes?.deliveryTitle || null);
 
         const analysisRes = await api.get(`/groups/${selectedGroupId}/analysis`);
         if (analysisRes?.criteria?.length > 0) {
@@ -35,6 +52,7 @@ export default function Feedback() {
         setApiError('Error de conexion con Azure APIM: No se pudo cargar la retroalimentacion del grupo.');
         setAiFeedback('');
         setProfessorText('');
+        setDeliveryTitle(null);
         setCriteria([]);
       } finally {
         setIsLoading(false);
@@ -75,19 +93,20 @@ export default function Feedback() {
         <div className="feedback-header-left">
           <h1 className="feedback-title">Retroalimentacion</h1>
           <span className="feedback-meta">
-            Grupo {selectedGroupId} &middot; Entrega 2: Prototipo
+            {groups.find((group) => group.id === selectedGroupId)?.name || 'Grupo no disponible desde APIM'}
+            {deliveryTitle ? ` · ${deliveryTitle}` : ''}
           </span>
         </div>
 
         <div className="feedback-header-actions">
           <select
-            value={selectedGroupId}
+            value={selectedGroupId ?? ''}
             onChange={(e) => setSelectedGroupId(Number(e.target.value))}
             className="filter-select"
           >
-            <option value={1}>Grupo 1</option>
-            <option value={2}>Grupo 2</option>
-            <option value={3}>Grupo 3</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>{group.name}</option>
+            ))}
           </select>
 
           <button

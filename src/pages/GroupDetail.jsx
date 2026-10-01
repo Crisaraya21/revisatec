@@ -24,16 +24,20 @@ export default function GroupDetail() {
         const groupRes = await api.get(`/groups/${groupId}`);
         setGroup({
           id: groupId,
-          name: groupRes.name || `Grupo ${groupId}`,
-          repoUrl: groupRes.repoUrl || '',
-          avance: groupRes.avance || 0,
-          score: groupRes.score || 0,
-          estado: groupRes.estado || 'En curso',
+          name: groupRes.name || null,
+          repoUrl: groupRes.repoUrl || null,
+          avance: groupRes.avance ?? null,
+          score: groupRes.score ?? null,
+          estado: groupRes.estado || null,
         });
 
         const analysisRes = await api.get(`/groups/${groupId}/analysis`);
-        if (analysisRes?.score !== undefined) {
-          setGroup((prev) => ({ ...prev, score: analysisRes.score }));
+        if (analysisRes?.score !== undefined || analysisRes?.progress !== undefined) {
+          setGroup((prev) => ({
+            ...prev,
+            score: analysisRes.score ?? prev?.score ?? null,
+            avance: analysisRes.progress ?? prev?.avance ?? null,
+          }));
         }
 
         const criteriaRes = await api.get(`/groups/${groupId}/criteria`);
@@ -90,12 +94,13 @@ export default function GroupDetail() {
             </button>
             <span style={{ color: 'var(--border-default)' }}>/</span>
             <h1 className="student-welcome-title" style={{ fontSize: '1.2rem' }}>
-              {group ? group.name : `Grupo ${groupId}`}
+              {group ? group.name || 'Nombre no disponible desde APIM' : 'Grupo no disponible desde APIM'}
             </h1>
           </div>
           {group && (
             <span className="student-group-subtitle">
-              {group.repoUrl ? group.repoUrl.replace('https://github.com/', '') : 'Sin repositorio'} &middot; {group.estado}
+              {group.repoUrl ? group.repoUrl.replace('https://github.com/', '') : 'Repositorio no disponible desde APIM'}
+              {group.estado && ` · ${group.estado}`}
             </span>
           )}
         </div>

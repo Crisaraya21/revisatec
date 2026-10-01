@@ -5,6 +5,9 @@ import './Feedback.css';
 
 export default function StudentFeedback() {
   const [professorComment, setProfessorComment] = useState('');
+  const [groupName, setGroupName] = useState(null);
+  const [deliveryTitle, setDeliveryTitle] = useState(null);
+  const [publicationStatus, setPublicationStatus] = useState(null);
   const [criteria, setCriteria] = useState([]);
   const [score, setScore] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -17,14 +20,20 @@ export default function StudentFeedback() {
       try {
         const res = await api.get('/groups/2/feedback');
         setProfessorComment(res?.professor || '');
-        setScore(res?.score ?? null);
+        setGroupName(res?.groupName || null);
+        setDeliveryTitle(res?.deliveryTitle || null);
+        setPublicationStatus(res?.status || null);
 
         const analysisRes = await api.get('/groups/2/analysis');
+        setScore(res?.score ?? analysisRes?.score ?? null);
         setCriteria(analysisRes?.criteria || []);
       } catch (err) {
         console.error('Error al cargar feedback publicado:', err);
         setApiError('Error de conexion con Azure APIM: No se pudo cargar la retroalimentacion.');
         setProfessorComment('');
+        setGroupName(null);
+        setDeliveryTitle(null);
+        setPublicationStatus(null);
         setCriteria([]);
         setScore(null);
       } finally {
@@ -41,7 +50,7 @@ export default function StudentFeedback() {
         <div className="feedback-header-left">
           <h1 className="feedback-title">Retroalimentacion</h1>
           <span className="feedback-meta">
-            Entrega 2: Prototipo &middot; publicada
+            {deliveryTitle || 'Entrega no disponible desde APIM'}
           </span>
         </div>
 
@@ -81,7 +90,7 @@ export default function StudentFeedback() {
             <div
               style={{ backgroundColor: 'rgba(57, 111, 162, 0.12)', borderRadius: 12, padding: '16px 22px', textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
             >
-              <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--action-primary)' }}>
+                <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--action-primary)' }}>
                 {score !== null ? score : '—'}
               </span>
               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -92,17 +101,24 @@ export default function StudentFeedback() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  Grupo 2 &middot; Entrega 2: Prototipo
+                  {groupName || 'Grupo no disponible desde APIM'}
+                  {deliveryTitle && ` · ${deliveryTitle}`}
                 </h3>
-                <span
-                  style={{ fontSize: '0.688rem', fontWeight: 700, padding: '2px 8px', borderRadius: 12, backgroundColor: 'rgba(34, 197, 94, 0.12)', color: '#16a34a', border: '1px solid rgba(34, 197, 94, 0.3)' }}
-                >
-                  Publicada
-                </span>
+                {publicationStatus && (
+                  <span
+                    style={{ fontSize: '0.688rem', fontWeight: 700, padding: '2px 8px', borderRadius: 12, backgroundColor: 'rgba(34, 197, 94, 0.12)', color: '#16a34a', border: '1px solid rgba(34, 197, 94, 0.3)' }}
+                  >
+                    {publicationStatus === 'published' ? 'Publicada' : publicationStatus}
+                  </span>
+                )}
               </div>
-              <p style={{ fontSize: '0.813rem', color: 'var(--text-muted)' }}>
-                Retroalimentacion oficial publicada por el profesor. Ya no se puede editar.
-              </p>
+              {publicationStatus && (
+                <p style={{ fontSize: '0.813rem', color: 'var(--text-muted)' }}>
+                  {publicationStatus === 'published'
+                    ? 'Retroalimentacion oficial publicada por el profesor. Ya no se puede editar.'
+                    : 'Estado de publicación informado por APIM.'}
+                </p>
+              )}
             </div>
           </div>
 

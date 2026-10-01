@@ -317,19 +317,10 @@
   border-bottom: 1px solid var(--border-default);
   vertical-align: middle;
   background-color: var(--bg-card);
-  transition: background-color 0.15s ease;
 }
 
 .custom-groups-table tbody tr:last-child td {
   border-bottom: none;
-}
-
-.custom-groups-table tbody tr {
-  cursor: pointer;
-}
-
-.custom-groups-table tbody tr:hover td {
-  background-color: var(--bg-sunken);
 }
 
 .group-info-flex {
@@ -350,11 +341,6 @@
   font-size: 0.75rem;
   font-weight: 700;
   flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-
-.custom-groups-table tbody tr:hover .group-avatar-badge {
-  transform: scale(1.08);
 }
 
 .group-titles {
@@ -443,23 +429,6 @@
   background-color: var(--badge-warning-bg);
   color: var(--badge-warning-text);
   border: 1px solid var(--badge-warning-border);
-}
-
-.row-chevron {
-  text-align: right;
-  padding-right: 20px;
-}
-
-.row-chevron svg {
-  display: inline-block;
-  vertical-align: middle;
-  color: var(--text-muted);
-  transition: transform 0.2s ease, color 0.2s ease;
-}
-
-.custom-groups-table tbody tr:hover .row-chevron svg {
-  transform: translateX(3px);
-  color: var(--action-primary);
 }
 
 /* Paginación */
@@ -699,13 +668,6 @@
   flex-direction: column;
   gap: 12px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.mobile-group-card:active {
-  background-color: var(--bg-sunken);
-  transform: scale(0.98);
 }
 
 .mobile-card-top-row {

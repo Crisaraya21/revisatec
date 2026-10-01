@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { Icons } from '../components/Icons';
@@ -18,11 +19,14 @@ export default function Login() {
     navigate('/groups');
   };
 
-  const handleGoogleLogin = () => {
-    // Botón Google: Ingresa como Estudiante
-    loginAsStudent('sofia@estudiantec.cr');
-    navigate('/student');
-  };
+  const handleGoogleLogin = useGoogleLogin({
+    onSuccess: () => {
+      // Login real con Google. Entra como Estudiante, datos vienen de los mocks.
+      loginAsStudent('sofia@estudiantec.cr');
+      navigate('/student');
+    },
+    onError: () => console.log('Falló el login con Google'),
+  });
 
   return (
     <div className="login-page-container">
@@ -98,7 +102,7 @@ export default function Login() {
           {/* Botón Google: Entra como Estudiante */}
           <button
             type="button"
-            onClick={handleGoogleLogin}
+            onClick={() => handleGoogleLogin()}
             className="btn-login-google"
           >
             <Icons.Google />

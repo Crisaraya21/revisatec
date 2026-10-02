@@ -109,38 +109,6 @@ export default function Feedback() {
     }
   };
 
-  const handleSimulate400 = async () => {
-    try {
-      const targetId = selectedGroupId || 1;
-      const res = await api.put(`/groups/${targetId}/feedback?error=true`, { error: true });
-      setHttpResult({
-        code: 400,
-        label: 'Bad Request',
-        endpoint: `PUT /groups/${targetId}/feedback?error=true`,
-        message: 'Respuesta recibida desde Azure APIM.',
-        body: res,
-      });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setHttpResult({
-          code: err.status,
-          label: err.status === 400 ? 'Bad Request' : `HTTP ${err.status}`,
-          endpoint: `PUT /groups/${selectedGroupId || 1}/feedback?error=true`,
-          message: err.message || 'Datos inválidos detectados por Azure APIM.',
-          body: err.body,
-        });
-      } else {
-        console.error('Error de conexión con Azure APIM:', err);
-        showToast(
-          'error',
-          503,
-          'Sin Conexión con APIM',
-          'No se pudo conectar con Azure APIM. El servicio se encuentra inactivo.'
-        );
-      }
-    }
-  };
-
   return (
     <div className="feedback-page-container">
       {/* Toast Flotante para notificaciones HTTP */}

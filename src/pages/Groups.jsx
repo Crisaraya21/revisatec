@@ -15,6 +15,7 @@ export default function Groups() {
   const navigate = useNavigate();
   const {
     items,
+    totalRecords,
     page,
     totalPages,
     search,

@@ -5,6 +5,7 @@ import './StudentDashboard.css';
 
 export default function StudentGroup() {
   const [group, setGroup] = useState(null);
+  const [members, setMembers] = useState([]);
   const [issues, setIssues] = useState([]);
   const [milestones, setMilestones] = useState([]);
   const [membersUnavailable, setMembersUnavailable] = useState(false);

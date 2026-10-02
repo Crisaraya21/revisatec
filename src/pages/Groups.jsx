@@ -269,20 +269,23 @@ export default function Groups() {
   const handleSimulateError404 = async () => {
     try {
       await api.get('/inexistente');
-      showToast(
-        'error',
-        404,
-        'Validación de Error (HTTP 404 Not Found)',
-        'Recurso no encontrado en Azure APIM.'
-      );
     } catch (err) {
-      const code = err instanceof ApiError ? err.status : 404;
-      showToast(
-        'error',
-        code,
-        `Validación de Error (HTTP ${code} Not Found)`,
-        err.message || 'Recurso no encontrado en Azure APIM.'
-      );
+      if (err instanceof ApiError) {
+        showToast(
+          'error',
+          err.status,
+          `Error HTTP ${err.status} (${err.status === 404 ? 'Not Found' : 'Error'})`,
+          err.message || 'Recurso no encontrado en Azure APIM.'
+        );
+      } else {
+        console.error('Error de conexión con Azure APIM:', err);
+        showToast(
+          'error',
+          503,
+          'Sin Conexión con APIM',
+          'No se pudo conectar con Azure APIM. El servicio se encuentra inactivo.'
+        );
+      }
     }
   };
 

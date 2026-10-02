@@ -413,19 +413,22 @@ export default function GroupDetail() {
             </div>
           ) : (
             <div className="milestones-list">
-              {report?.checklist?.map((h, idx) => (
-                <div key={idx} className="milestone-item">
-                  <span className={`milestone-icon ${h.status}`}>
-                    {h.status === 'completed' ? <Icons.CheckCircle /> : <Icons.Clock />}
-                  </span>
-                  <div className="milestone-content">
-                    <span className="milestone-title">{h.title}</span>
-                    <span className={`milestone-meta ${h.status}`}>
-                      {h.date} &middot; {h.status}
+              {report?.checklist?.map((h, idx) => {
+                const isDone = h.status === 'completed' || h.status === 'completado';
+                return (
+                  <div key={idx} className="milestone-item">
+                    <span className={`milestone-icon ${isDone ? 'completed' : 'pending'}`}>
+                      {isDone ? <Icons.CheckCircle /> : <Icons.Clock />}
                     </span>
+                    <div className="milestone-content">
+                      <span className="milestone-title">{h.name || h.title || 'Hito'}</span>
+                      <span className={`milestone-meta ${isDone ? 'completed' : 'pending'}`}>
+                        {h.date} &middot; {h.status}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

@@ -97,7 +97,9 @@ export default function StudentDashboard() {
         try {
           const eventsRes = await api.get('/calendar/events');
           if (isMounted) {
-            const evList = Array.isArray(eventsRes) ? eventsRes : (eventsRes?.events || []);
+            const evList = Array.isArray(eventsRes?.items)
+              ? eventsRes.items
+              : (Array.isArray(eventsRes) ? eventsRes : []);
             setUpcomingEvents(evList);
           }
         } catch {
@@ -134,31 +136,6 @@ export default function StudentDashboard() {
     setReloadKey((k) => k + 1);
   };
 
-  const handleSimulate404 = async () => {
-    try {
-      const res = await api.get('/recurso-no-existente');
-      setHttpResult({
-        code: 404,
-        label: 'Not Found',
-        endpoint: 'GET /recurso-no-existente',
-        message: 'Respuesta recibida desde Azure APIM.',
-        body: res,
-      });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setHttpResult({
-          code: err.status,
-          label: 'Not Found',
-          endpoint: 'GET /recurso-no-existente',
-          message: err.message,
-          body: err.body,
-        });
-      } else {
-        console.error('Error de conexión con Azure APIM:', err);
-        throw err;
-      }
-    }
-  };
 
   useEffect(() => {
     api.get('/calendar/events')
@@ -536,22 +513,6 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          {/* Barra de Pruebas de Estados HTTP (Ley del proyecto) */}
-          <div className="http-simulation-bar">
-            <div className="http-sim-label">
-              <Icons.AlertTriangle />
-              <span>Prueba de Respuesta de Error de Azure APIM:</span>
-            </div>
-            <div className="http-sim-buttons">
-              <button
-                type="button"
-                onClick={handleSimulate404}
-                className="btn-test-http danger"
-              >
-                Probar Error 404 (Not Found en APIM)
-              </button>
-            </div>
-          </div>
           <div className="student-dates-card">
             <h2 className="card-title-simple">Próximas fechas</h2>
             <div className="student-dates-list">

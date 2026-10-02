@@ -312,32 +312,7 @@ export default function StudentFeedback() {
     );
   };
 
-  // Simulación de Error 404 según la Ley del Proyecto
-  const handleSimulate404 = async () => {
-    try {
-      const res = await api.get('/inexistente-recurso');
-      setHttpResult({
-        code: 404,
-        label: 'Not Found',
-        endpoint: 'GET /inexistente-recurso',
-        message: 'Respuesta recibida desde Azure APIM.',
-        body: res,
-      });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setHttpResult({
-          code: err.status,
-          label: 'Not Found',
-          endpoint: 'GET /inexistente-recurso',
-          message: err.message,
-          body: err.body,
-        });
-      } else {
-        console.error('Error de conexión con Azure APIM:', err);
-        throw err;
-      }
-    }
-  };
+
 
   return (
     <div className="feedback-page-container">
@@ -1050,23 +1025,7 @@ export default function StudentFeedback() {
             </div>
           )}
 
-          {/* Barra de Pruebas de Estados HTTP (Cumplimiento de la Ley sin datos falsos) */}
-          <div className="http-simulation-bar">
-            <div className="http-sim-label">
-              <Icons.AlertTriangle />
-              <span>Prueba de Respuesta de Error de Azure APIM:</span>
-            </div>
-            <div className="http-sim-buttons">
-              <button
-                type="button"
-                onClick={handleSimulate404}
-                className="btn-test-http danger"
-                title="Llama al mock para comprobar el manejo visual de HTTP 404 real"
-              >
-                Probar Error 404 (Not Found en APIM)
-              </button>
-            </div>
-          </div>
+
         </>
       )}
 

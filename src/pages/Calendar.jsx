@@ -355,7 +355,12 @@ export default function Calendar() {
         });
       } else {
         console.error('Error de conexión con Azure APIM:', err);
-        throw err;
+        showToast(
+          'error',
+          503,
+          'Sin Conexión con APIM',
+          'No se pudo conectar con Azure APIM. El servicio se encuentra inactivo.'
+        );
       }
     }
   };
@@ -855,6 +860,7 @@ export default function Calendar() {
             type="button"
             onClick={handleSimulateError404}
             className="btn-test-http danger"
+            title="Llama al mock para comprobar el manejo visual de HTTP 404 real"
           >
             Probar Error 404 (Not Found en APIM)
           </button>
@@ -1062,7 +1068,7 @@ export default function Calendar() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ backgroundColor: 'var(--card-bg, #fff)', borderRadius: 14, padding: '28px 28px 24px', maxWidth: 480, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: '1.5px solid #ef4444' }}
+            style={{ backgroundColor: 'var(--card-bg, #fff)', borderRadius: 14, padding: '28px 28px 24px', maxWidth: 480, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: httpResult.code === 400 ? '1.5px solid #f59e0b' : '1.5px solid #ef4444' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

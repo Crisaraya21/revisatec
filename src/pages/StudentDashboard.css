@@ -842,31 +842,40 @@
 }
 
 .btn-test-http {
-  padding: 5px 12px;
+  padding: 4px 10px;
   border-radius: 6px;
-  font-size: 0.75rem;
+  font-size: 0.719rem;
   font-weight: 600;
-  border: 1px solid var(--border-default);
-  background-color: var(--bg-surface);
   cursor: pointer;
-  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  transition: all 0.18s ease;
+  line-height: 1.25;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .btn-test-http.warning {
-  color: #d97706;
-  border-color: rgba(245, 158, 11, 0.3);
+  background-color: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #b45309;
 }
 
 .btn-test-http.warning:hover {
-  background-color: rgba(245, 158, 11, 0.08);
+  background-color: rgba(245, 158, 11, 0.24);
+  border-color: #d97706;
+  color: #92400e;
 }
 
 .btn-test-http.danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.35);
   color: #dc2626;
-  border-color: rgba(239, 68, 68, 0.3);
 }
 
 .btn-test-http.danger:hover {
-  background-color: rgba(239, 68, 68, 0.08);
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: #b91c1c;
+  color: #991b1b;
 }
 

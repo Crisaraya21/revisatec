@@ -123,32 +123,6 @@ export default function StudentGroup() {
     }
   };
 
-  // Simulación de estados HTTP
-  const handleSimulate404 = async () => {
-    try {
-      const res = await api.get('/recurso-inexistente-404');
-      setHttpResult({
-        code: 404,
-        label: 'Not Found',
-        endpoint: 'GET /recurso-inexistente-404',
-        message: 'Respuesta recibida desde Azure APIM.',
-        body: res,
-      });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setHttpResult({
-          code: err.status,
-          label: 'Not Found',
-          endpoint: 'GET /recurso-inexistente-404',
-          message: err.message,
-          body: err.body,
-        });
-      } else {
-        console.error('Error de conexión con Azure APIM:', err);
-        throw err;
-      }
-    }
-  };
 
   return (
     <div className="student-dashboard-container">
@@ -488,22 +462,6 @@ export default function StudentGroup() {
         </div>
       )}
 
-      {/* Barra de Pruebas de Estados HTTP (Cumplimiento de la Ley sin datos falsos) */}
-      <div className="http-simulation-bar">
-        <div className="http-sim-label">
-          <Icons.AlertTriangle />
-          <span>Prueba de Respuesta de Error de Azure APIM:</span>
-        </div>
-        <div className="http-sim-buttons">
-          <button
-            type="button"
-            onClick={handleSimulate404}
-            className="btn-test-http danger"
-          >
-            Probar Error 404 (Not Found en APIM)
-          </button>
-        </div>
-      </div>
 
       {httpResult && (
         <div onClick={() => setHttpResult(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>

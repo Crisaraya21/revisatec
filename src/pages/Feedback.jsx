@@ -109,13 +109,14 @@ export default function Feedback() {
     }
   };
 
-  const handleSimulate404 = async () => {
+  const handleSimulate400 = async () => {
     try {
-      const res = await api.get(`/groups/999/feedback`);
+      const targetId = selectedGroupId || 1;
+      const res = await api.put(`/groups/${targetId}/feedback?error=true`, { error: true });
       setHttpResult({
-        code: 404,
-        label: 'Not Found',
-        endpoint: 'GET /groups/999/feedback',
+        code: 400,
+        label: 'Bad Request',
+        endpoint: `PUT /groups/${targetId}/feedback?error=true`,
         message: 'Respuesta recibida desde Azure APIM.',
         body: res,
       });
@@ -123,14 +124,19 @@ export default function Feedback() {
       if (err instanceof ApiError) {
         setHttpResult({
           code: err.status,
-          label: 'Not Found',
-          endpoint: 'GET /groups/999/feedback',
-          message: err.message,
+          label: err.status === 400 ? 'Bad Request' : `HTTP ${err.status}`,
+          endpoint: `PUT /groups/${selectedGroupId || 1}/feedback?error=true`,
+          message: err.message || 'Datos inválidos detectados por Azure APIM.',
           body: err.body,
         });
       } else {
         console.error('Error de conexión con Azure APIM:', err);
-        throw err;
+        showToast(
+          'error',
+          503,
+          'Sin Conexión con APIM',
+          'No se pudo conectar con Azure APIM. El servicio se encuentra inactivo.'
+        );
       }
     }
   };
@@ -290,10 +296,10 @@ export default function Feedback() {
                     levelLower.includes('excelente') || levelLower.includes('bueno') || typeLower === 'success'
                       ? 'success'
                       : levelLower.includes('progreso') || levelLower.includes('medio') || typeLower === 'warning'
-                      ? 'warning'
-                      : levelLower.includes('bajo') || levelLower.includes('alerta') || typeLower === 'alert'
-                      ? 'alert'
-                      : 'info';
+                        ? 'warning'
+                        : levelLower.includes('bajo') || levelLower.includes('alerta') || typeLower === 'alert'
+                          ? 'alert'
+                          : 'info';
 
                   return (
                     <div key={index} className="criterion-row">
@@ -321,7 +327,7 @@ export default function Feedback() {
             </div>
           )}
 
-          {/* Barra de Pruebas de Estados HTTP (Cumplimiento de la Ley sin datos falsos) */}
+          {/* Barra de Pruebas de Estados HTTP */}
           <div className="http-simulation-bar" style={{ marginTop: 24 }}>
             <div className="http-sim-label">
               <Icons.AlertTriangle />
@@ -330,11 +336,11 @@ export default function Feedback() {
             <div className="http-sim-buttons">
               <button
                 type="button"
-                onClick={handleSimulate404}
-                className="btn-test-http danger"
-                title="Llama al mock para comprobar el manejo visual de HTTP 404 real"
+                onClick={handleSimulate400}
+                className="btn-test-http warning"
+                title="Evalúa respuesta HTTP 400 en PUT /groups/{id}/feedback desde Azure APIM"
               >
-                Probar Error 404 (Not Found en APIM)
+                Probar Error 400 (Bad Request en APIM)
               </button>
             </div>
           </div>

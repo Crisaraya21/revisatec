@@ -34,11 +34,11 @@ export function usePaginatedList(endpoint, { pageSize = 5 } = {}) {
   const updateSearch = (value) => { setSearch(value); setPage(1); };
 
   return {
-    items: data.items,
-    totalRecords: data.totalRecords,
+    items: data?.items || [],
+    totalRecords: data?.totalRecords ?? (data?.items?.length || 0),
     page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil(data.totalRecords / pageSize)),
+    totalPages: Math.max(1, Math.ceil((data?.totalRecords ?? (data?.items?.length || 0)) / pageSize)),
     search,
     status,
     error,

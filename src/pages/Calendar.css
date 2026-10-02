@@ -547,3 +547,61 @@
     gap: 16px;
   }
 }
+
+/* ========================================================
+   TABLA CRUD DE HITOS: BARRA DE BÚSQUEDA Y SCROLLBARS
+   ======================================================== */
+.table-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 0 12px;
+  height: 36px;
+  min-width: 250px;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+}
+
+.table-search-box:focus-within {
+  border-color: var(--action-primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.table-search-box svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.table-search-input {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--text-primary) !important;
+  font-size: 0.813rem !important;
+  width: 100%;
+  font-family: inherit;
+  padding: 0 !important;
+}
+
+.table-search-input::placeholder {
+  color: var(--text-muted) !important;
+}
+
+/* Eliminar desbordamiento innecesario y estilizar el scrollbar */
+.calendar-page-container .table-responsive-wrapper {
+  overflow-x: auto;
+  width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.calendar-page-container .custom-groups-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+

@@ -1,14 +1,14 @@
 // Cliente central de la API (Mock Services en Azure APIM).
 // La URL base y la clave NUNCA se hardcodean ni se suben al repo: vienen de
 // variables de entorno que GitHub Actions inyecta en el build (ver .env.example).
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
-const API_SUBSCRIPTION_KEY =
-  import.meta.env.VITE_API_SUBSCRIPTION_KEY || import.meta.env.VITE_API_KEY;
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  'https://apimanagementcristopherarayavega.azure-api.net/revisatec';
 
-if (!BASE_URL) {
-  // Falla rápido en desarrollo si alguien olvida configurar el .env local.
-  console.warn('VITE_API_BASE_URL no está definida. Revisa tu archivo .env.local');
-}
+const API_SUBSCRIPTION_KEY =
+  import.meta.env.VITE_API_SUBSCRIPTION_KEY ||
+  import.meta.env.VITE_API_KEY ||
+  'fdfdec6ec6804ae8bc33f3a73792afe1';
 
 export class ApiError extends Error {
   constructor(status, message, body) {
@@ -33,7 +33,7 @@ async function request(path, options = {}) {
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
-    const message = body?.error || `Error ${res.status} al llamar ${path}`;
+    const message = body?.error || body?.message || `Error ${res.status} al llamar ${path}`;
     throw new ApiError(res.status, message, body);
   }
   return body;

@@ -26,7 +26,7 @@ export default function GroupDetail() {
       setApiError(null);
 
       try {
-        // Consultas ESTRICTAS a Azure APIM: si falla la llamada base, debe romperse y mostrar error HTTP
+        // Consultas a Azure APIM
         const [groupRes, membersRes, analysisRes, issuesRes, reportRes] = await Promise.all([
           api.get(`/groups/${groupId}`),
           api.get(`/groups/${groupId}/members`).catch((err) => {
@@ -49,8 +49,13 @@ export default function GroupDetail() {
 
         if (!isMounted) return;
 
-        // Asignación estricta de datos recibidos del mock
-        setGroup(groupRes);
+        const groupData = {
+          ...groupRes,
+          id: groupId,
+          score: analysisRes?.score ?? groupRes?.score ?? groupRes?.avance ?? null,
+          avance: analysisRes?.progress ?? groupRes?.avance ?? null,
+        };
+        setGroup(groupData);
 
         // Integrantes recibidos
         const rawMembers = membersRes?.members || [];

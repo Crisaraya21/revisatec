@@ -6,6 +6,11 @@ import './StudentDashboard.css';
 
 export default function StudentFeedback() {
   const [feedbackData, setFeedbackData] = useState(null);
+  const [professorComment, setProfessorComment] = useState('');
+  const [groupName, setGroupName] = useState(null);
+  const [deliveryTitle, setDeliveryTitle] = useState(null);
+  const [publicationStatus, setPublicationStatus] = useState(null);
+  const [score, setScore] = useState(null);
   const [criteria, setCriteria] = useState([]);
   const [evidence, setEvidence] = useState([]);
   const [directReviews, setDirectReviews] = useState([]);
@@ -123,10 +128,15 @@ export default function StudentFeedback() {
         const fbRes = await api.get('/groups/2/feedback');
         if (!isMounted) return;
         setFeedbackData(fbRes);
+        setProfessorComment(fbRes?.professor || '');
+        setGroupName(fbRes?.groupName || null);
+        setDeliveryTitle(fbRes?.deliveryTitle || null);
+        setPublicationStatus(fbRes?.status || null);
 
         // 2. Cargar Análisis de Criterios y Evidencias
         const analysisRes = await api.get('/groups/2/analysis');
         if (!isMounted) return;
+        setScore(fbRes?.score ?? analysisRes?.score ?? null);
         setCriteria(analysisRes?.criteria || []);
         setEvidence(analysisRes?.evidence || []);
 
@@ -148,6 +158,11 @@ export default function StudentFeedback() {
           message: err.message || 'Error de conexión con Azure APIM. No se pudieron obtener los datos reales.',
         });
         setFeedbackData(null);
+        setProfessorComment('');
+        setGroupName(null);
+        setDeliveryTitle(null);
+        setPublicationStatus(null);
+        setScore(null);
         setCriteria([]);
         setEvidence([]);
         setDirectReviews([]);
@@ -364,7 +379,9 @@ export default function StudentFeedback() {
         <div className="feedback-header-left">
           <h1 className="feedback-title">Retroalimentación y Aceptación de Cambios</h1>
           <span className="feedback-meta">
-            {feedbackData ? `${feedbackData.groupName} · ${feedbackData.deliveryTitle}` : 'Cargando información...'}
+            {feedbackData
+              ? `${feedbackData.groupName} · ${feedbackData.deliveryTitle}`
+              : (deliveryTitle || 'Cargando información...')}
           </span>
         </div>
 
@@ -467,7 +484,7 @@ export default function StudentFeedback() {
               }}
             >
               <span style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--action-primary)' }}>
-                {feedbackData.score}
+                {feedbackData?.score ?? score ?? '—'}
               </span>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
                 / 100 PTS
@@ -477,22 +494,24 @@ export default function StudentFeedback() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 260 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {feedbackData.groupName} &middot; {feedbackData.deliveryTitle}
+                  {feedbackData?.groupName || groupName || 'Grupo 2'} &middot; {feedbackData?.deliveryTitle || deliveryTitle || 'Entrega 2'}
                 </h3>
-                <span
-                  style={{
-                    fontSize: '0.688rem',
-                    fontWeight: 700,
-                    padding: '3px 10px',
-                    borderRadius: 12,
-                    backgroundColor: 'rgba(34, 197, 94, 0.12)',
-                    color: '#16a34a',
-                    border: '1px solid rgba(34, 197, 94, 0.3)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {feedbackData.status}
-                </span>
+                {(feedbackData?.status || publicationStatus) && (
+                  <span
+                    style={{
+                      fontSize: '0.688rem',
+                      fontWeight: 700,
+                      padding: '3px 10px',
+                      borderRadius: 12,
+                      backgroundColor: 'rgba(34, 197, 94, 0.12)',
+                      color: '#16a34a',
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {feedbackData?.status || (publicationStatus === 'published' ? 'Publicada' : publicationStatus)}
+                  </span>
+                )}
               </div>
               <p style={{ fontSize: '0.844rem', color: 'var(--text-secondary)', margin: 0 }}>
                 Revisa las sugerencias de la IA y del profesor a continuación. Marca los cambios aceptados

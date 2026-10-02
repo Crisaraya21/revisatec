@@ -333,7 +333,7 @@ function MainAppShell() {
                     Consulta la guía de criterios e indicaciones para la IA.
                   </div>
                 </div>
-                <div className="sidebar-version">Versión v0.1.0</div>
+                <div className="sidebar-version">Versión {__APP_VERSION__}</div>
               </>
             ) : (
               <>
@@ -345,7 +345,7 @@ function MainAppShell() {
                     revisatec/g2-web
                   </div>
                 </div>
-                <div className="sidebar-version">Versión v0.1.0</div>
+                <div className="sidebar-version">Versión {__APP_VERSION__}</div>
               </>
             )}
           </div>

@@ -5,6 +5,7 @@ import './Issues.css';
 
 export default function Issues() {
   const [issues, setIssues] = useState([]);
+  const [groups, setGroups] = useState([]);
 
   const [filterType, setFilterType] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -14,39 +15,32 @@ export default function Issues() {
   const [bannerClosed, setBannerClosed] = useState(false);
   const [apiError, setApiError] = useState(null);
 
-  // Conectar con Azure APIM (GET /groups/1/issues y GET /groups/2/issues)
+  // Carga los grupos y consulta los inconvenientes de cada uno.
   const fetchIssuesFromApi = async () => {
     setIsLoading(true);
     setApiError(null);
     try {
-      const res1 = await api.get('/groups/1/issues');
-      const res2 = await api.get('/groups/2/issues');
+      const [groupsRes, issuesRes] = await Promise.all([
+        api.get('/groups?page=1&pageSize=100&search='),
+        api.get('/groups/1/issues'),
+      ]);
+      const groupList = Array.isArray(groupsRes?.items) ? groupsRes.items : [];
+      setGroups(groupList);
 
-      const items1 = res1?.items || [];
-      const items2 = res2?.items || [];
-
-      const apiIssues = [
-        ...items1.map((item, idx) => ({
-          id: 10 + idx,
-          type: item.type || 'Commit de prueba',
-          description: item.description || `Incidencia reportada en fecha ${item.date || 'reciente'}`,
-          group: 'Grupo 1',
-          groupId: 1,
-          detected: item.date || 'reciente',
-          status: 'Sin resolver',
-          iconType: 'commit',
-        })),
-        ...items2.map((item, idx) => ({
-          id: 20 + idx,
-          type: item.type || 'Error de entrega',
-          description: item.description || `Discrepancia en fecha ${item.date || 'reciente'}`,
-          group: 'Grupo 2',
-          groupId: 2,
-          detected: item.date || 'reciente',
-          status: 'Sin resolver',
-          iconType: 'file',
-        })),
-      ];
+      const apiIssues = (Array.isArray(issuesRes?.items) ? issuesRes.items : []).map((item, index) => {
+        const group = groupList.find((entry) => String(entry.id) === String(item.groupId));
+        const groupId = item.groupId ?? group?.id;
+        return {
+          id: `${groupId ?? 'group'}:${item.id || 'issue'}:${index}`,
+          type: item.type || 'Tipo no disponible desde APIM',
+          description: item.description || item.type || 'Descripción no disponible desde APIM',
+          group: item.groupName || group?.name || 'Grupo no disponible desde APIM',
+          groupId,
+          detected: item.date || null,
+          status: item.status || null,
+          iconType: item.type?.toLowerCase().includes('commit') ? 'commit' : 'file',
+        };
+      });
 
       setIssues(apiIssues);
     } catch (err) {
@@ -65,7 +59,7 @@ export default function Issues() {
   const handleToggleStatus = (id) => {
     setIssues((prev) =>
       prev.map((item) =>
-        item.id === id
+        item.id === id && item.status
           ? {
               ...item,
               status: item.status === 'Sin resolver' ? 'Resuelto' : 'Sin resolver',
@@ -75,9 +69,17 @@ export default function Issues() {
     );
   };
 
+  const handleReviewIssue = (id) => {
+    setIssues((prev) => prev.map((item) => item.id === id
+      ? { ...item, status: item.status === 'Resuelto' ? 'Sin resolver' : 'Resuelto' }
+      : item));
+  };
+
   // Contadores dinamicos
   const totalCount = issues.length;
-  const unresolvedCount = issues.filter((i) => i.status === 'Sin resolver').length;
+  const unresolvedCount = issues.every((issue) => issue.status)
+    ? issues.filter((issue) => issue.status === 'Sin resolver').length
+    : null;
   const testCommitCount = issues.filter((i) => i.type.toLowerCase().includes('commit')).length;
   const deliveryErrorCount = issues.filter((i) => i.type.toLowerCase().includes('entrega')).length;
 
@@ -113,7 +115,9 @@ export default function Issues() {
         <div className="issues-header-left">
           <h1 className="issues-title">Inconvenientes</h1>
           <span className="issues-subtitle">
-            {totalCount} detectados &middot; {unresolvedCount} sin resolver
+            {apiError
+              ? 'Datos no disponibles desde APIM'
+              : `${totalCount} detectados · ${unresolvedCount === null ? 'Estado no disponible desde APIM' : `${unresolvedCount} sin resolver`}`}
           </span>
         </div>
 
@@ -224,8 +228,9 @@ export default function Issues() {
               className="filter-select"
             >
               <option value="all">Grupo (Todos)</option>
-              <option value="Grupo 1">Grupo 1</option>
-              <option value="Grupo 2">Grupo 2</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.name}>{group.name}</option>
+              ))}
             </select>
 
             <select
@@ -248,12 +253,12 @@ export default function Issues() {
             <table className="custom-issues-table">
               <thead>
                 <tr>
-                  <th style={{ width: '22%' }}>TIPO</th>
-                  <th style={{ width: '38%' }}>DESCRIPCION</th>
-                  <th style={{ width: '12%' }}>GRUPO</th>
+                  <th style={{ width: '20%' }}>TIPO</th>
+                  <th style={{ width: '36%' }}>DESCRIPCION</th>
+                  <th style={{ width: '11%' }}>GRUPO</th>
                   <th style={{ width: '12%' }}>DETECTADO</th>
-                  <th style={{ width: '12%' }}>ESTADO</th>
-                  <th style={{ width: '4%' }}></th>
+                  <th className="issues-status-heading" style={{ width: '15%' }}>ESTADO</th>
+                  <th style={{ width: '6%' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -287,31 +292,32 @@ export default function Issues() {
                         <span className="issue-detected-time">{item.detected}</span>
                       </td>
 
-                      <td>
+                      <td className="issues-status-cell">
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(item.id)}
-                          className={`status-pill ${
-                            item.status === 'Sin resolver' ? 'alert' : 'completed'
+                          disabled={!item.status}
+                          className={`issue-status-button ${
+                            item.status === 'Sin resolver' ? 'is-open' : item.status === 'Resuelto' ? 'is-resolved' : 'is-unavailable'
                           }`}
-                          title="Haz clic para cambiar estado"
+                          title={item.status ? 'El cambio solo se guarda localmente' : 'Estado no disponible desde APIM'}
                         >
                           {item.status === 'Sin resolver' ? (
                             <Icons.AlertTriangle />
                           ) : (
                             <Icons.CheckCircle />
                           )}
-                          <span>{item.status}</span>
+                          <span>{item.status || 'Estado no disponible'}</span>
                         </button>
                       </td>
 
                       <td className="row-action-cell">
                         <button
                           type="button"
-                          onClick={() => handleToggleStatus(item.id)}
+                          onClick={() => handleReviewIssue(item.id)}
                           className="btn-review-issue"
                         >
-                          <span>Revisar</span>
+                          <span>{item.status === 'Resuelto' ? 'Reabrir' : 'Revisar'}</span>
                           <Icons.ChevronRight />
                         </button>
                       </td>

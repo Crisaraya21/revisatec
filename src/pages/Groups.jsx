@@ -1,9 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api, ApiError } from '../lib/apiClient';
 import { Icons } from '../components/Icons';
 import './Groups.css';
+
+function formatEventDate(value) {
+  if (!value) return 'Fecha no disponible';
+  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? 'Fecha no disponible' : date.toLocaleDateString('es-CR');
+}
 
 export default function Groups() {
   const navigate = useNavigate();
@@ -82,6 +88,48 @@ export default function Groups() {
   const [newGroupRepo, setNewGroupRepo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
+  const [modalError, setModalError] = useState(null);
+  const [courseName, setCourseName] = useState(null);
+  const [calendarEvents, setCalendarEvents] = useState(null);
+  const [dashboardIssues, setDashboardIssues] = useState(null);
+  const [feedbackPendingCount, setFeedbackPendingCount] = useState(null);
+  const [groupMemberCounts, setGroupMemberCounts] = useState({});
+
+  useEffect(() => {
+    if (status !== 'success') return undefined;
+
+    let cancelled = false;
+    async function loadOverview() {
+      const [coursesResult, calendarResult, issueResults, feedbackResults, memberResults] = await Promise.all([
+        api.get('/courses').catch(() => null),
+        api.get('/calendar/events').catch(() => null),
+        Promise.all(items.map((group) => api.get(`/groups/${group.id}/issues`).catch(() => null))),
+        Promise.all(items.map((group) => api.get(`/groups/${group.id}/feedback`).catch(() => null))),
+        Promise.all(items.map((group) => api.get(`/groups/${group.id}/members`).catch(() => null))),
+      ]);
+
+      if (!cancelled) {
+        setCourseName(coursesResult?.items?.[0]?.name || null);
+        setCalendarEvents(Array.isArray(calendarResult?.items) ? calendarResult.items : null);
+        setDashboardIssues(issueResults.some((result) => !result)
+          ? null
+          : issueResults.flatMap((result, index) => (result.items || []).map((issue) => ({
+            ...issue,
+            groupName: items[index].name,
+          }))));
+        setFeedbackPendingCount(feedbackResults.some((result) => !result)
+          ? null
+          : feedbackResults.filter((result) => !result.professor).length);
+        setGroupMemberCounts(Object.fromEntries(items.map((group, index) => [
+          group.id,
+          Array.isArray(memberResults[index]?.members) ? memberResults[index].members.length : null,
+        ])));
+      }
+    }
+
+    loadOverview();
+    return () => { cancelled = true; };
+  }, [items, status]);
 
   // Modal de edición (PUT)
   const [editingGroup, setEditingGroup] = useState(null);
@@ -267,9 +315,23 @@ export default function Groups() {
   };
 
   const formatRepoSlug = (url, fallbackName) => {
-    if (!url) return `revisatec/${(fallbackName || 'grupo').toLowerCase().replace(/\s+/g, '-')}`;
+    if (!url) return fallbackName ? 'Repositorio no disponible' : '—';
     return url.replace(/^https?:\/\/(www\.)?github\.com\//, '');
   };
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingEvents = (calendarEvents || [])
+    .filter((event) => {
+      if (!event.date) return false;
+      const date = new Date(`${event.date.slice(0, 10)}T00:00:00`);
+      return !Number.isNaN(date.getTime()) && date >= today;
+    })
+    .sort((left, right) => left.date.localeCompare(right.date));
+  const activeGroups = items.filter((group) => group.estado && group.estado.toLowerCase() !== 'completado').length;
+  const unresolvedIssues = dashboardIssues?.every((issue) => typeof issue.status === 'string')
+    ? dashboardIssues.filter((issue) => issue.status.toLowerCase() !== 'resuelto').length
+    : null;
 
   return (
     <div className="groups-page-container">
@@ -379,8 +441,8 @@ export default function Groups() {
             </div>
             <span className="summary-card-title">Grupos Registrados</span>
           </div>
-          <div className="summary-card-number">{displayedItems.length}</div>
-          <div className="summary-card-footer">Servicio Mock en Azure APIM</div>
+          <div className="summary-card-number">{status === 'success' ? displayedItems.length : '—'}</div>
+          <div className="summary-card-footer">{status === 'success' ? `${totalRecords} en total` : 'No disponible desde APIM'}</div>
         </div>
 
         <div className="summary-card">
@@ -409,6 +471,19 @@ export default function Groups() {
               : 0}%
           </div>
           <div className="summary-card-footer">Evaluación continua del curso</div>
+        </div>
+
+        <div className="summary-card">
+          <div className="summary-card-top">
+            <div className="summary-icon-box">
+              <Icons.AlertTriangle />
+            </div>
+            <span className="summary-card-title">Inconvenientes</span>
+          </div>
+          <div className="summary-card-number">{dashboardIssues === null ? '—' : dashboardIssues.length}</div>
+          <div className="summary-card-footer">
+            {unresolvedIssues === null ? 'Estado no disponible desde APIM' : `${unresolvedIssues} sin resolver`}
+          </div>
         </div>
       </div>
 
@@ -534,6 +609,59 @@ export default function Groups() {
         </div>
       )}
 
+      {/* En Móvil: Lista de Tarjetas individuales (según Figma Móvil) */}
+      <div className="mobile-groups-list">
+        {status === 'loading' ? (
+          <div style={{ textAlign: 'center', padding: '24px' }}>Cargando grupos...</div>
+        ) : displayedItems.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '24px' }}>No se encontraron grupos.</div>
+        ) : (
+          displayedItems.map((group, index) => {
+            const avance = Number.isFinite(Number(group.avance)) ? Number(group.avance) : null;
+            const estado = group.estado || null;
+            const avatarCode = `G${group.id || index + 1}`;
+
+            return (
+              <div
+                key={group.id || index}
+                className="mobile-group-card"
+                onClick={() => navigate(`/groups/${group.id}`)}
+                style={{ cursor: 'pointer' }}
+              >
+                <div className="mobile-card-top-row">
+                  <div className="mobile-group-meta">
+                    <div className="group-avatar-badge">{avatarCode}</div>
+                    <div className="mobile-group-names">
+                      <span className="mobile-group-name">{group.name}</span>
+                      <span className="mobile-group-repo">{formatRepoSlug(group.repoUrl, group.name)}</span>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`status-pill ${
+                      estado === 'Alerta' ? 'alert' : 'in-progress'
+                    }`}
+                  >
+                    {estado === 'Alerta' ? <Icons.AlertTriangle /> : <Icons.Clock />}
+                    <span>{estado || 'Estado no disponible'}</span>
+                  </span>
+                </div>
+
+                <div className="mobile-progress-row">
+                  <div className="progress-track">
+                    <div
+                      className="progress-fill"
+                      style={{ width: `${avance ?? 0}%` }}
+                    ></div>
+                  </div>
+                  <span className="progress-percentage">{avance === null ? '—' : `${avance}%`}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
       {/* Tabla Completa de Administración de Grupos (CRUD) */}
       <div className="groups-table-card" style={{ display: 'block' }}>
         <div className="table-responsive-wrapper">
@@ -564,6 +692,7 @@ export default function Groups() {
                 displayedItems.map((group, index) => {
                   const avanceReal = group.avance ?? 0;
                   const estadoReal = group.estado || 'En progreso';
+                  const memberCount = groupMemberCounts[group.id] ?? null;
                   const avatarCode = `G${group.id || index + 1}`;
 
                   return (
@@ -577,7 +706,9 @@ export default function Groups() {
                           <div className="group-avatar-badge">{avatarCode}</div>
                           <div className="group-titles">
                             <span className="group-name-title">{group.name}</span>
-                            <span className="group-members-count">ID: #{group.id}</span>
+                            <span className="group-members-count">
+                              {memberCount != null ? `${memberCount} integrantes` : `ID: #${group.id}`}
+                            </span>
                           </div>
                         </div>
                       </td>

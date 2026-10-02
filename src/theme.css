@@ -265,23 +265,20 @@ tbody tr:hover {
 
 /* Celdas del Calendario */
 .calendar-cell {
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
-              background-color 0.15s ease, 
+  transition: background-color 0.15s ease,
               box-shadow 0.2s ease !important;
 }
 
 .calendar-cell:hover {
-  transform: scale(1.02);
   z-index: 2;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
 }
 
 .event-pill {
-  transition: transform 0.15s ease, filter 0.15s ease !important;
+  transition: filter 0.15s ease !important;
 }
 
 .event-pill:hover {
-  transform: scale(1.05);
   filter: brightness(1.08);
 }
 

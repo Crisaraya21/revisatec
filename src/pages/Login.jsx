@@ -121,7 +121,7 @@ export default function Login() {
       </div>
 
       <footer className="login-footer">
-        <span>Versión v0.1.0</span>
+        <span>Versión {__APP_VERSION__}</span>
       </footer>
     </div>
   );

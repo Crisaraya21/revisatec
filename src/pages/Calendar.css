@@ -146,7 +146,7 @@
 
 .calendar-days-header {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   background-color: var(--table-th-bg);
   border-bottom: 1px solid var(--border-default);
 }
@@ -163,14 +163,18 @@
 
 .calendar-month-cells {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-auto-rows: 88px;
   background-color: var(--border-default);
   gap: 1px;
 }
 
 .calendar-cell {
   background-color: var(--bg-card);
-  min-height: 88px;
+  height: 88px;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -194,6 +198,7 @@
 }
 
 .event-pill {
+  min-width: 0;
   padding: 3px 6px;
   border-radius: 4px;
   font-size: 0.688rem;
@@ -201,7 +206,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
+  cursor: default;
   transition: transform 0.15s ease;
 }
 
@@ -225,6 +230,50 @@
   background-color: var(--badge-warning-bg);
   color: var(--badge-warning-text);
   border: 1px solid var(--badge-warning-border);
+}
+
+.calendar-event-tooltip {
+  position: fixed;
+  z-index: 120;
+  width: max-content;
+  max-width: min(240px, calc(100vw - 24px));
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  color: var(--text-primary);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
+  pointer-events: none;
+  animation: fadeInView 0.12s ease-out;
+}
+
+.calendar-event-tooltip.is-above {
+  transform: translateY(-100%);
+}
+
+.calendar-tooltip-date {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.calendar-tooltip-event {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.813rem;
+  overflow-wrap: anywhere;
+}
+
+.calendar-tooltip-event span {
+  color: var(--text-muted);
+  font-size: 0.75rem;
 }
 
 /* Columna Derecha de Widgets */

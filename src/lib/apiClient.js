@@ -5,7 +5,8 @@ const BASE_URL =
   import.meta.env.VITE_API_BASE_URL ||
   'https://apimanagementcristopherarayavega.azure-api.net/revisatec';
 
-const API_KEY =
+const API_SUBSCRIPTION_KEY =
+  import.meta.env.VITE_API_SUBSCRIPTION_KEY ||
   import.meta.env.VITE_API_KEY ||
   'fdfdec6ec6804ae8bc33f3a73792afe1';
 
@@ -21,7 +22,7 @@ async function request(path, options = {}) {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
-      'Ocp-Apim-Subscription-Key': API_KEY,
+      'Ocp-Apim-Subscription-Key': API_SUBSCRIPTION_KEY,
       ...options.headers,
     },
     ...options,

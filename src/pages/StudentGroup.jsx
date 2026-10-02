@@ -5,9 +5,9 @@ import './StudentDashboard.css';
 
 export default function StudentGroup() {
   const [group, setGroup] = useState(null);
-  const [members, setMembers] = useState([]);
   const [issues, setIssues] = useState([]);
   const [milestones, setMilestones] = useState([]);
+  const [membersUnavailable, setMembersUnavailable] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [repoInput, setRepoInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -25,13 +25,16 @@ export default function StudentGroup() {
     let isMounted = true;
 
     async function loadGroupDetails() {
+      setIsLoading(true);
+      setApiError(null);
+      setMembersUnavailable(false);
       try {
         // 1. Datos del grupo
         const res = await api.get('/groups/2');
         if (!isMounted) return;
         setGroup({
           id: 2,
-          name: res.name || 'Grupo 2',
+          name: res.name || null,
           repoUrl: res.repoUrl || '',
           course: res.course || 'Diseño de Software',
           avance: res.avance ?? 71,
@@ -39,19 +42,34 @@ export default function StudentGroup() {
         setRepoInput(res.repoUrl || '');
 
         // 2. Integrantes
-        const membersRes = await api.get('/groups/2/members');
-        if (!isMounted) return;
-        setMembers(membersRes?.members || []);
+        try {
+          const membersRes = await api.get('/groups/2/members');
+          if (isMounted) setMembers(membersRes?.members || []);
+        } catch (err) {
+          console.warn('No se pudieron cargar los integrantes del grupo:', err);
+          if (isMounted) {
+            setMembers([]);
+            setMembersUnavailable(true);
+          }
+        }
 
         // 3. Inconvenientes reportados en el repo
-        const issuesRes = await api.get('/groups/2/issues');
-        if (!isMounted) return;
-        setIssues(issuesRes?.items || []);
+        try {
+          const issuesRes = await api.get('/groups/2/issues');
+          if (isMounted) setIssues(issuesRes?.items || []);
+        } catch (err) {
+          console.warn('No se pudieron cargar los issues:', err);
+          if (isMounted) setIssues([]);
+        }
 
         // 4. Reporte de hitos
-        const reportRes = await api.get('/groups/2/report');
-        if (!isMounted) return;
-        setMilestones(reportRes?.checklist || []);
+        try {
+          const reportRes = await api.get('/groups/2/report');
+          if (isMounted) setMilestones(reportRes?.checklist || []);
+        } catch (err) {
+          console.warn('No se pudo cargar el reporte de hitos:', err);
+          if (isMounted) setMilestones([]);
+        }
       } catch (err) {
         if (!isMounted) return;
         console.error('Error al cargar datos del grupo:', err);
@@ -165,7 +183,13 @@ export default function StudentGroup() {
       {/* Encabezado */}
       <div className="student-header">
         <div className="student-header-left">
-          <h1 className="student-welcome-title">{group ? group.name : 'Mi Grupo'}</h1>
+          <h1 className="student-welcome-title">
+            {group
+              ? group.name || 'Mi Grupo'
+              : isLoading
+                ? 'Cargando...'
+                : 'Grupo no disponible desde APIM'}
+          </h1>
           <span className="student-group-subtitle">
             {group?.repoUrl ? group.repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '') : ''} &middot; {group?.course || 'Diseño de Software'}
           </span>
@@ -313,43 +337,51 @@ export default function StudentGroup() {
                   )}
                 </div>
 
-                <div style={{ marginTop: 8 }}>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 10 }}>
-                    Integrantes del Equipo ({members.length}) &middot; Obtenido de <code>GET /groups/2/members</code>
+                <div style={{ marginTop: 10 }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
+                    Integrantes del equipo ({members.length}) &middot; Obtenido de <code>GET /groups/2/members</code>
                   </span>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {members.map((m, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          backgroundColor: 'var(--bg-sunken)',
-                          borderRadius: 8,
-                          border: '1px solid var(--border-default)',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div className="member-avatar">
-                            {m.initials || m.name?.charAt(0)}
+                  {membersUnavailable ? (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.844rem' }}>
+                      Integrantes no disponibles desde APIM.
+                    </span>
+                  ) : members.length === 0 ? (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.844rem' }}>Sin integrantes registrados.</span>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {members.map((m, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 14px',
+                            backgroundColor: 'var(--bg-sunken)',
+                            borderRadius: 8,
+                            border: '1px solid var(--border-default)',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div className="member-avatar">
+                              {m.initials || m.name?.charAt(0)}
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '0.844rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>
+                                {m.name}
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                {m.email} &middot; {m.role}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <span style={{ fontSize: '0.844rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>
-                              {m.name}
-                            </span>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              {m.email} &middot; {m.role}
-                            </span>
-                          </div>
+                          <span style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--action-primary)' }}>
+                            {m.contribution}
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--action-primary)' }}>
-                          {m.contribution}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -416,10 +448,10 @@ export default function StudentGroup() {
               <h3 className="card-title-simple">Avance Global del Grupo</h3>
               <div style={{ textAlign: 'center', padding: '16px 0' }}>
                 <span style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--action-primary)' }}>
-                  {group.avance}%
+                  {group.avance === null || group.avance === undefined ? '—' : `${group.avance}%`}
                 </span>
                 <span style={{ display: 'block', fontSize: '0.781rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                  Calculado según rúbrica y entregas
+                  {group.avance === null || group.avance === undefined ? 'Avance no disponible desde APIM' : 'Calculado según rúbrica y entregas'}
                 </span>
               </div>
             </div>

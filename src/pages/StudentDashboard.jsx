@@ -1,17 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/apiClient';
+import { useAuth } from '../context/AuthContext';
 import { Icons } from '../components/Icons';
 import './StudentDashboard.css';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const studentFirstName = user?.name?.split(' ')[0] || 'Estudiante';
   const [groupInfo, setGroupInfo] = useState(null);
   const [criteria, setCriteria] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [milestones, setMilestones] = useState([]);
   const [feedbackSummary, setFeedbackSummary] = useState(null);
   const [issues, setIssues] = useState([]);
+  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [membersUnavailable, setMembersUnavailable] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [toast, setToast] = useState(null);
@@ -27,6 +32,9 @@ export default function StudentDashboard() {
     let isMounted = true;
 
     async function loadStudentDashboardData() {
+      setIsLoading(true);
+      setApiError(null);
+      setMembersUnavailable(false);
       try {
         // 1. Cargar información del grupo desde Azure APIM
         const groupRes = await api.get('/groups/2');
@@ -47,30 +55,61 @@ export default function StudentDashboard() {
         // 2. Cargar análisis de criterios y rúbrica
         const analysisRes = await api.get('/groups/2/analysis');
         if (!isMounted) return;
-        if (analysisRes?.score !== undefined) {
-          setGroupInfo((prev) => (prev ? { ...prev, score: analysisRes.score } : prev));
+        if (analysisRes?.score !== undefined || analysisRes?.progress !== undefined) {
+          setGroupInfo((prev) => ({
+            ...prev,
+            score: analysisRes.score ?? prev?.score ?? 85,
+            avance: analysisRes.progress ?? prev?.avance ?? 71,
+          }));
         }
         setCriteria(analysisRes?.criteria || []);
 
         // 3. Cargar integrantes del equipo
-        const membersRes = await api.get('/groups/2/members');
-        if (!isMounted) return;
-        setTeamMembers(membersRes?.members || []);
+        try {
+          const membersRes = await api.get('/groups/2/members');
+          if (isMounted) setTeamMembers(membersRes?.members || []);
+        } catch (err) {
+          console.warn('No se pudieron cargar los integrantes del grupo:', err);
+          if (isMounted) {
+            setTeamMembers([]);
+            setMembersUnavailable(true);
+          }
+        }
 
         // 4. Cargar reporte de hitos y entregas
-        const reportRes = await api.get('/groups/2/report');
-        if (!isMounted) return;
-        setMilestones(reportRes?.checklist || []);
+        try {
+          const reportRes = await api.get('/groups/2/report');
+          if (isMounted) setMilestones(reportRes?.checklist || []);
+        } catch {
+          if (isMounted) setMilestones([]);
+        }
 
         // 5. Cargar estado de retroalimentación
-        const feedbackRes = await api.get('/groups/2/feedback');
-        if (!isMounted) return;
-        setFeedbackSummary(feedbackRes);
+        try {
+          const feedbackRes = await api.get('/groups/2/feedback');
+          if (isMounted) setFeedbackSummary(feedbackRes);
+        } catch {
+          if (isMounted) setFeedbackSummary(null);
+        }
 
         // 6. Cargar inconvenientes del grupo
-        const issuesRes = await api.get('/groups/2/issues');
-        if (!isMounted) return;
-        setIssues(issuesRes?.items || []);
+        try {
+          const issuesRes = await api.get('/groups/2/issues');
+          if (isMounted) setIssues(issuesRes?.items || []);
+        } catch {
+          if (isMounted) setIssues([]);
+        }
+
+        // 7. Cargar próximas fechas
+        try {
+          const eventsRes = await api.get('/calendar/events');
+          if (isMounted) {
+            const evList = Array.isArray(eventsRes) ? eventsRes : (eventsRes?.events || []);
+            setUpcomingEvents(evList);
+          }
+        } catch {
+          if (isMounted) setUpcomingEvents([]);
+        }
       } catch (err) {
         if (!isMounted) return;
         console.error('Error al cargar datos del estudiante:', err);
@@ -131,6 +170,15 @@ export default function StudentDashboard() {
     }
   };
 
+  useEffect(() => {
+    api.get('/calendar/events')
+      .then((res) => setUpcomingEvents(Array.isArray(res?.items) ? res.items : []))
+      .catch((err) => {
+        console.warn('No se pudieron cargar las próximas fechas:', err);
+        setUpcomingEvents([]);
+      });
+  }, []);
+
   return (
     <div className="student-dashboard-container">
       {/* Toast Flotante de Notificaciones */}
@@ -164,11 +212,11 @@ export default function StudentDashboard() {
       {/* Encabezado */}
       <div className="student-header">
         <div className="student-header-left">
-          <h1 className="student-welcome-title">
-            {groupInfo ? groupInfo.name : 'Vista del Estudiante'}
-          </h1>
+          <h1 className="student-welcome-title">Hola, {studentFirstName}</h1>
           <span className="student-group-subtitle">
-            {groupInfo?.repoUrl ? groupInfo.repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '') : 'Conectando con Azure APIM...'}
+            {groupInfo
+              ? `${groupInfo.name || `Grupo ${groupInfo.id}`}${groupInfo.repoUrl ? ` · ${groupInfo.repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '')}` : ''}`
+              : 'Conectando con Azure APIM...'}
           </span>
         </div>
 
@@ -278,35 +326,39 @@ export default function StudentDashboard() {
           <div className="student-stats-row">
             <div className="student-stat-card">
               <span className="stat-label">Nota actual</span>
-              <span className="stat-value">{groupInfo.score} / 100</span>
+              <span className="stat-value">{groupInfo.score ?? '—'} / 100</span>
               <span className="stat-subtext">Ponderación oficial</span>
             </div>
 
             <div className="student-stat-card">
               <span className="stat-label">Mi aporte individual</span>
-              <span className="stat-value">{groupInfo.myContribution}%</span>
+              <span className="stat-value">{groupInfo.myContribution === null ? '—' : `${groupInfo.myContribution}%`}</span>
               <span className="stat-subtext">Participación calculada</span>
             </div>
 
             <div className="student-stat-card">
               <span className="stat-label">Pull Requests revisados</span>
-              <span className="stat-value">{groupInfo.reviewedPRs}</span>
+              <span className="stat-value">{groupInfo.reviewedPRs ?? '—'}</span>
               <span className="stat-subtext">Revisiones de pares</span>
             </div>
 
             <div className="student-stat-card highlight">
               <span className="stat-label">PRs sin revisar</span>
-              <span className="stat-value">{groupInfo.unreviewedPRs}</span>
-              <span className="stat-subtext" style={{ color: '#d97706', fontWeight: 600 }}>
-                Acción requerida
+              <span className="stat-value">{groupInfo.unreviewedPRs ?? '—'}</span>
+              <span className="stat-subtext" style={{ color: groupInfo.unreviewedPRs > 0 ? '#d97706' : 'var(--text-muted)', fontWeight: 600 }}>
+                {groupInfo.unreviewedPRs === null
+                  ? 'No disponible desde APIM'
+                  : groupInfo.unreviewedPRs > 0
+                  ? `${groupInfo.unreviewedPRs} sin revisión`
+                  : 'Sin PRs pendientes'}
               </span>
             </div>
 
             <div className="student-stat-card">
               <span className="stat-label">Commits registrados</span>
-              <span className="stat-value">{groupInfo.commitsCount}</span>
+              <span className="stat-value">{groupInfo.commitsCount ?? '—'}</span>
               <span className="stat-subtext" style={{ color: '#16a34a', fontWeight: 600 }}>
-                {groupInfo.commitsWeek}
+                {groupInfo.commitsWeek || 'Registrados en Git'}
               </span>
             </div>
           </div>
@@ -515,6 +567,36 @@ export default function StudentDashboard() {
               >
                 Probar Error 404 (Not Found)
               </button>
+            </div>
+          </div>
+          <div className="student-dates-card">
+            <h2 className="card-title-simple">Próximas fechas</h2>
+            <div className="student-dates-list">
+              {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 3).map((event) => {
+                const date = event.date ? new Date(`${event.date.slice(0, 10)}T00:00:00`) : null;
+                return (
+                  <div key={event.id || `${event.date}-${event.title}`} className="student-date-item">
+                    <div className="student-date-badge">
+                      <span className="badge-month">
+                        {date && !Number.isNaN(date.getTime())
+                          ? date.toLocaleDateString('es-CR', { month: 'short' }).replace('.', '').toUpperCase()
+                          : '—'}
+                      </span>
+                      <span className="badge-day">
+                        {date && !Number.isNaN(date.getTime()) ? String(date.getDate()).padStart(2, '0') : '—'}
+                      </span>
+                    </div>
+                    <div className="student-date-details">
+                      <span className="date-title">{event.title}</span>
+                      {(event.subtitle || event.audience) && (
+                        <span className="date-sub">{event.subtitle || event.audience}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }) : (
+                <span className="date-sub">No hay fechas disponibles desde APIM.</span>
+              )}
             </div>
           </div>
         </>

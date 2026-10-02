@@ -6,6 +6,7 @@ import { Icons } from './components/Icons';
 
 // Pantallas
 import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
 import Groups from './pages/Groups';
 import GroupDetail from './pages/GroupDetail';
 import Rubric from './pages/Rubric';
@@ -353,7 +354,7 @@ function MainAppShell() {
         <main className="page-wrapper">
           <Routes>
             {/* Rutas de Profesor */}
-            <Route path="/" element={<Groups />} />
+            <Route path="/" element={<Dashboard />} />
             <Route path="/groups" element={<Groups />} />
             <Route path="/groups/:id" element={<GroupDetail />} />
             <Route path="/rubric" element={<Rubric />} />

@@ -510,6 +510,32 @@
   box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
 
+.page-btn-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.781rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.page-btn-nav:hover:not(:disabled) {
+  background-color: var(--bg-sunken);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+.page-btn-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Widgets Derecha Escritorio */
 .dashboard-right-widgets {
   display: flex;
@@ -804,12 +830,21 @@
     gap: 16px;
   }
 
+  .course-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
   .course-title {
     font-size: 1.35rem;
   }
 
   .course-header-right {
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
 
   .course-selector-btn {
@@ -818,7 +853,15 @@
   }
 
   .btn-primary-action {
-    display: none;
+    display: inline-flex !important;
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 
   .summary-cards-grid {
@@ -841,10 +884,20 @@
 
   .mobile-groups-list {
     display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+  }
+
+  .mobile-group-card {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .mobile-view-all-btn {
     display: block;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .mobile-search-section {
@@ -852,9 +905,24 @@
     width: 100%;
   }
 
+  /* Grid principal en móvil: ocupa todo el ancho y apila widgets */
+  .dashboard-main-grid {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 16px;
+  }
+
   .dashboard-right-widgets {
     display: flex;
     flex-direction: column;
+    width: 100%;
     gap: 16px;
+  }
+
+  .figma-widget-card {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 18px;
   }
 }

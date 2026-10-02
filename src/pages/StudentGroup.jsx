@@ -14,6 +14,7 @@ export default function StudentGroup() {
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [toast, setToast] = useState(null);
+  const [httpResult, setHttpResult] = useState(null);
 
   const showToast = (type, status, title, message) => {
     setToast({ type, status, title, message });
@@ -123,31 +124,29 @@ export default function StudentGroup() {
   };
 
   // Simulación de estados HTTP
-  const handleSimulate400 = async () => {
-    try {
-      await api.put('/groups/2', {});
-    } catch (err) {
-      const code = err instanceof ApiError ? err.status : 400;
-      showToast(
-        'error',
-        code,
-        `Simulación Error HTTP ${code} (Bad Request)`,
-        err.message || 'Error 400: Datos inválidos enviados a Azure APIM.'
-      );
-    }
-  };
-
   const handleSimulate404 = async () => {
     try {
-      await api.get('/recurso-inexistente-404');
+      const res = await api.get('/recurso-inexistente-404');
+      setHttpResult({
+        code: 404,
+        label: 'Not Found',
+        endpoint: 'GET /recurso-inexistente-404',
+        message: 'Respuesta recibida desde Azure APIM.',
+        body: res,
+      });
     } catch (err) {
-      const code = err instanceof ApiError ? err.status : 404;
-      showToast(
-        'error',
-        code,
-        `Simulación Error HTTP ${code} (Not Found)`,
-        err.message || 'Error 404: Recurso no encontrado en Azure APIM.'
-      );
+      if (err instanceof ApiError) {
+        setHttpResult({
+          code: err.status,
+          label: 'Not Found',
+          endpoint: 'GET /recurso-inexistente-404',
+          message: err.message,
+          body: err.body,
+        });
+      } else {
+        console.error('Error de conexión con Azure APIM:', err);
+        throw err;
+      }
     }
   };
 
@@ -493,25 +492,44 @@ export default function StudentGroup() {
       <div className="http-simulation-bar">
         <div className="http-sim-label">
           <Icons.AlertTriangle />
-          <span>Validación de Estados de Error HTTP:</span>
+          <span>Prueba de Respuesta de Error de Azure APIM:</span>
         </div>
         <div className="http-sim-buttons">
-          <button
-            type="button"
-            onClick={handleSimulate400}
-            className="btn-test-http warning"
-          >
-            Probar Error 400 (Bad Request)
-          </button>
           <button
             type="button"
             onClick={handleSimulate404}
             className="btn-test-http danger"
           >
-            Probar Error 404 (Not Found)
+            Probar Error 404 (Not Found en APIM)
           </button>
         </div>
       </div>
+
+      {httpResult && (
+        <div onClick={() => setHttpResult(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--card-bg, #fff)', borderRadius: 14, padding: '28px 28px 24px', maxWidth: 480, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: httpResult.code === 400 ? '1.5px solid #f59e0b' : '1.5px solid #ef4444' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ backgroundColor: httpResult.code === 400 ? '#fef3c7' : '#fee2e2', color: httpResult.code === 400 ? '#b45309' : '#991b1b', fontWeight: 800, fontSize: '1.1rem', borderRadius: 8, padding: '4px 12px', fontFamily: 'monospace' }}>HTTP {httpResult.code}</span>
+                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary, #111)' }}>{httpResult.label}</span>
+              </div>
+              <button type="button" onClick={() => setHttpResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-secondary, #666)', lineHeight: 1 }}>✕</button>
+            </div>
+            {httpResult.endpoint && (
+              <div style={{ marginBottom: 12, padding: '6px 12px', backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 6, fontSize: '0.781rem', fontFamily: 'monospace', color: 'var(--text-secondary, #444)' }}>
+                <strong>Solicitud a APIM:</strong> {httpResult.endpoint}
+              </div>
+            )}
+            <p style={{ margin: '0 0 14px', fontSize: '0.875rem', color: 'var(--text-secondary, #555)' }}>{httpResult.message}</p>
+            {httpResult.body && (
+              <pre style={{ backgroundColor: '#1e1e2e', color: '#cdd6f4', borderRadius: 8, padding: '12px 14px', fontSize: '0.781rem', overflowX: 'auto', margin: 0, lineHeight: 1.6 }}>{JSON.stringify(httpResult.body, null, 2)}</pre>
+            )}
+            <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setHttpResult(null)} style={{ backgroundColor: httpResult.code === 400 ? '#f59e0b' : '#ef4444', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer' }}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

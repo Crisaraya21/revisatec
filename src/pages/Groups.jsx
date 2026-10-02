@@ -264,27 +264,17 @@ export default function Groups() {
   };
 
   // ----------------------------------------------------
-  // SIMULACIÓN DE ESTADOS DE ERROR HTTP (400 Y 404)
+  // SIMULACIÓN DE ESTADOS DE ERROR HTTP (404)
   // ----------------------------------------------------
-  const handleSimulateError400 = async () => {
-    try {
-      // Intencionalmente enviamos payload vacío o inválido para probar manejo de 400
-      await api.post('/groups', {});
-    } catch (err) {
-      const code = err instanceof ApiError ? err.status : 400;
-      showToast(
-        'error',
-        code,
-        `Validación de Error (HTTP ${code} Bad Request)`,
-        err.message || 'Datos inválidos recibidos por el servicio Mock.'
-      );
-    }
-  };
-
   const handleSimulateError404 = async () => {
     try {
-      // Consultamos un recurso inexistente para activar la respuesta 404 de APIM
       await api.get('/inexistente');
+      showToast(
+        'error',
+        404,
+        'Validación de Error (HTTP 404 Not Found)',
+        'Recurso no encontrado en Azure APIM.'
+      );
     } catch (err) {
       const code = err instanceof ApiError ? err.status : 404;
       showToast(
@@ -370,15 +360,6 @@ export default function Groups() {
         <div className="course-header-right" style={{ flexWrap: 'wrap', gap: 10 }}>
           {/* Botones de simulación de errores HTTP para evaluación */}
           <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              type="button"
-              onClick={handleSimulateError400}
-              className="course-selector-btn"
-              title="Prueba el manejo visual de un error HTTP 400 Bad Request"
-              style={{ fontSize: '0.781rem', padding: '7px 10px' }}
-            >
-              Simular Error 400
-            </button>
             <button
               type="button"
               onClick={handleSimulateError404}

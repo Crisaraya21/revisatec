@@ -416,7 +416,7 @@ export default function GroupDetail() {
               {report?.checklist?.map((h, idx) => {
                 const isDone = h.status === 'completed' || h.status === 'completado';
                 return (
-                  <div key={idx} className="milestone-item">
+                  <div key={idx} className="hito-item">
                     <span className={`milestone-icon ${isDone ? 'completed' : 'pending'}`}>
                       {isDone ? <Icons.CheckCircle /> : <Icons.Clock />}
                     </span>

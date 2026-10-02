@@ -327,23 +327,6 @@ export default function Feedback() {
             </div>
           )}
 
-          {/* Barra de Pruebas de Estados HTTP */}
-          <div className="http-simulation-bar" style={{ marginTop: 24 }}>
-            <div className="http-sim-label">
-              <Icons.AlertTriangle />
-              <span>Prueba de Respuesta de Error de Azure APIM:</span>
-            </div>
-            <div className="http-sim-buttons">
-              <button
-                type="button"
-                onClick={handleSimulate400}
-                className="btn-test-http warning"
-                title="Evalúa respuesta HTTP 400 en PUT /groups/{id}/feedback desde Azure APIM"
-              >
-                Probar Error 400 (Bad Request en APIM)
-              </button>
-            </div>
-          </div>
         </>
       )}
 

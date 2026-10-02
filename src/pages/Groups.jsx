@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api, ApiError } from '../lib/apiClient';
@@ -9,7 +9,6 @@ export default function Groups() {
   const navigate = useNavigate();
   const {
     items,
-    totalRecords,
     page,
     totalPages,
     search,
@@ -19,6 +18,53 @@ export default function Groups() {
     setSearch,
     reload,
   } = usePaginatedList('/groups', { pageSize: 5 });
+
+  // Estados locales optimistas para persistir operaciones CRUD sobre el mock estático de APIM
+  const [deletedGroupIds, setDeletedGroupIds] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('revisatec_deleted_groups') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [createdGroups, setCreatedGroups] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('revisatec_created_groups') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [editedGroups, setEditedGroups] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('revisatec_edited_groups') || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  // Lista calculada combinando respuesta de Azure APIM con mutaciones del CRUD
+  const displayedItems = useMemo(() => {
+    let list = (items || []).filter((g) => !deletedGroupIds.includes(g.id));
+    list = list.map((g) => (editedGroups[g.id] ? { ...g, ...editedGroups[g.id] } : g));
+    createdGroups.forEach((cg) => {
+      if (!list.some((g) => g.id === cg.id) && !deletedGroupIds.includes(cg.id)) {
+        list = [cg, ...list];
+      }
+    });
+    return list;
+  }, [items, deletedGroupIds, editedGroups, createdGroups]);
+
+  // Restablecer datos originales del Mock en APIM
+  const handleResetMockData = () => {
+    setDeletedGroupIds([]);
+    setCreatedGroups([]);
+    setEditedGroups({});
+    sessionStorage.removeItem('revisatec_deleted_groups');
+    sessionStorage.removeItem('revisatec_created_groups');
+    sessionStorage.removeItem('revisatec_edited_groups');
+    reload();
+    showToast('success', 200, 'Datos Restablecidos', 'Se restableció el listado original de Azure APIM.');
+  };
 
   // Notificaciones Toast para feedback visual de estados HTTP
   const [toast, setToast] = useState(null); // { type: 'success' | 'error', code: number, title: string, message: string }
@@ -66,6 +112,17 @@ export default function Groups() {
         repoUrl: newGroupRepo.trim() || undefined,
       });
 
+      const newGroupObj = {
+        id: res?.id || Date.now(),
+        name: res?.name || newGroupName.trim(),
+        repoUrl: newGroupRepo.trim() || undefined,
+        avance: 0,
+        estado: 'En progreso',
+      };
+      const updatedCreated = [newGroupObj, ...createdGroups];
+      setCreatedGroups(updatedCreated);
+      sessionStorage.setItem('revisatec_created_groups', JSON.stringify(updatedCreated));
+
       setNewGroupName('');
       setNewGroupRepo('');
       setIsCreateModalOpen(false);
@@ -75,7 +132,7 @@ export default function Groups() {
         'success',
         201,
         'Grupo Creado (HTTP 201 Created)',
-        `Se registró "${res.name || newGroupName}" correctamente en Azure APIM.`
+        `Se registró "${res?.name || newGroupName}" correctamente en Azure APIM.`
       );
     } catch (err) {
       console.error('Error al crear grupo:', err);
@@ -112,7 +169,16 @@ export default function Groups() {
         repoUrl: editRepo.trim() || undefined,
       });
 
-      const updatedName = res.name || editName;
+      const updatedName = res?.name || editName.trim();
+      const updatedObj = {
+        ...editingGroup,
+        name: updatedName,
+        repoUrl: editRepo.trim() || undefined,
+      };
+      const updatedEdited = { ...editedGroups, [editingGroup.id]: updatedObj };
+      setEditedGroups(updatedEdited);
+      sessionStorage.setItem('revisatec_edited_groups', JSON.stringify(updatedEdited));
+
       setEditingGroup(null);
       reload();
 
@@ -145,6 +211,10 @@ export default function Groups() {
     try {
       const res = await api.delete(`/groups/${deletingGroup.id}`);
       const msg = res?.message || 'Grupo eliminado';
+      const updatedDeleted = [...deletedGroupIds, deletingGroup.id];
+      setDeletedGroupIds(updatedDeleted);
+      sessionStorage.setItem('revisatec_deleted_groups', JSON.stringify(updatedDeleted));
+
       setDeletingGroup(null);
       reload();
 
@@ -309,7 +379,7 @@ export default function Groups() {
             </div>
             <span className="summary-card-title">Grupos Registrados</span>
           </div>
-          <div className="summary-card-number">{totalRecords || items.length}</div>
+          <div className="summary-card-number">{displayedItems.length}</div>
           <div className="summary-card-footer">Servicio Mock en Azure APIM</div>
         </div>
 
@@ -321,7 +391,7 @@ export default function Groups() {
             <span className="summary-card-title">Grupos con Repositorio</span>
           </div>
           <div className="summary-card-number">
-            {items.filter((g) => g.repoUrl).length || items.length}
+            {displayedItems.filter((g) => g.repoUrl).length}
           </div>
           <div className="summary-card-footer">Repositorios GitHub enlazados</div>
         </div>
@@ -334,9 +404,9 @@ export default function Groups() {
             <span className="summary-card-title">Promedio de Avance</span>
           </div>
           <div className="summary-card-number">
-            {items.length > 0
-              ? Math.round(items.reduce((acc, c) => acc + (c.avance || 0), 0) / items.length)
-              : 66}%
+            {displayedItems.length > 0
+              ? Math.round(displayedItems.reduce((acc, c) => acc + (c.avance || 0), 0) / displayedItems.length)
+              : 0}%
           </div>
           <div className="summary-card-footer">Evaluación continua del curso</div>
         </div>
@@ -376,8 +446,32 @@ export default function Groups() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ fontSize: '0.813rem', color: 'var(--text-muted)' }}>
-            Total: <strong>{totalRecords || items.length}</strong> grupos
+            Total: <strong>{displayedItems.length}</strong> grupos
           </span>
+          {(deletedGroupIds.length > 0 || createdGroups.length > 0 || Object.keys(editedGroups).length > 0) && (
+            <button
+              type="button"
+              onClick={handleResetMockData}
+              className="btn-secondary-action"
+              title="Restablecer grupos originales del Mock"
+              style={{
+                padding: '6px 12px',
+                borderRadius: 8,
+                border: '1px solid #fecaca',
+                background: '#fff1f2',
+                color: '#e11d48',
+                cursor: 'pointer',
+                fontSize: '0.781rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+                fontWeight: 600,
+              }}
+            >
+              <Icons.Trash />
+              <span>Restablecer Mocks</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={reload}
@@ -460,14 +554,14 @@ export default function Groups() {
                     Cargando lista paginada desde Azure APIM...
                   </td>
                 </tr>
-              ) : items.length === 0 ? (
+              ) : displayedItems.length === 0 ? (
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                     No se encontraron grupos con el criterio de búsqueda.
                   </td>
                 </tr>
               ) : (
-                items.map((group, index) => {
+                displayedItems.map((group, index) => {
                   const avanceReal = group.avance ?? 0;
                   const estadoReal = group.estado || 'En progreso';
                   const avatarCode = `G${group.id || index + 1}`;
@@ -587,7 +681,7 @@ export default function Groups() {
         {/* Footer de Paginación */}
         <div className="table-pagination-footer">
           <span className="pagination-text">
-            Página {page} de {totalPages || 1} &middot; Total {totalRecords || items.length} registros
+            Página {page} de {totalPages || 1} &middot; Total {displayedItems.length} registros
           </span>
 
           <div className="pagination-pages">

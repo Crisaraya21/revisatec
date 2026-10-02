@@ -63,19 +63,19 @@ const RubricIcons = {
   )
 };
 
+// Criterios detectados (inicializados con los 5 del diseño de Figma)
+const defaultCriteria = [
+  { name: 'Contribución equitativa', weight: 30 },
+  { name: 'Calidad de revisiones', weight: 25 },
+  { name: 'Cumplimiento de hitos', weight: 20 },
+  { name: 'Calidad de commits', weight: 15 },
+  { name: 'Documentación', weight: 10 },
+];
+
+const defaultInstructions =
+  'Prioriza la calidad de las revisiones sobre la cantidad de commits. Un aporte cuenta más si fue revisado por un compañero. Ignora commits de formato o documentación menor. La retroalimentación debe ser breve, constructiva y con una sugerencia concreta.';
+
 export default function Rubric() {
-  // Criterios detectados (inicializados con los 5 del diseño de Figma)
-  const defaultCriteria = [
-    { name: 'Contribución equitativa', weight: 30 },
-    { name: 'Calidad de revisiones', weight: 25 },
-    { name: 'Cumplimiento de hitos', weight: 20 },
-    { name: 'Calidad de commits', weight: 15 },
-    { name: 'Documentación', weight: 10 },
-  ];
-
-  const defaultInstructions =
-    'Prioriza la calidad de las revisiones sobre la cantidad de commits. Un aporte cuenta más si fue revisado por un compañero. Ignora commits de formato o documentación menor. La retroalimentación debe ser breve, constructiva y con una sugerencia concreta.';
-
   const [criteria, setCriteria] = useState(defaultCriteria);
   const [instructions, setInstructions] = useState(defaultInstructions);
   const [frequency, setFrequency] = useState('twice-daily');

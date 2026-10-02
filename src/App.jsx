@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, NavLink, Link, useLocation, useNavigate, 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import { Icons } from './components/Icons';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Pantallas
 import Login from './pages/Login';
@@ -352,28 +353,30 @@ function MainAppShell() {
 
         {/* Área de Contenido con animación de entrada */}
         <main className="page-wrapper">
-          <Routes>
-            {/* Rutas de Profesor */}
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/groups" element={<Groups />} />
-            <Route path="/groups/:id" element={<GroupDetail />} />
-            <Route path="/rubric" element={<Rubric />} />
-            <Route path="/feedback" element={<Feedback />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/issues" element={<Issues />} />
+          <ErrorBoundary>
+            <Routes>
+              {/* Rutas de Profesor */}
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/groups" element={<Groups />} />
+              <Route path="/groups/:id" element={<GroupDetail />} />
+              <Route path="/rubric" element={<Rubric />} />
+              <Route path="/feedback" element={<Feedback />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/issues" element={<Issues />} />
 
-            {/* Rutas de Estudiante */}
-            <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/student/group" element={<StudentGroup />} />
-            <Route path="/student/feedback" element={<StudentFeedback />} />
-            <Route path="/student/calendar" element={<Calendar />} />
+              {/* Rutas de Estudiante */}
+              <Route path="/student" element={<StudentDashboard />} />
+              <Route path="/student/group" element={<StudentGroup />} />
+              <Route path="/student/feedback" element={<StudentFeedback />} />
+              <Route path="/student/calendar" element={<Calendar />} />
 
-            {/* Redirección por defecto */}
-            <Route
-              path="*"
-              element={<Navigate to={isStudent ? '/student' : '/groups'} replace />}
-            />
-          </Routes>
+              {/* Redirección por defecto */}
+              <Route
+                path="*"
+                element={<Navigate to={isStudent ? '/student' : '/groups'} replace />}
+              />
+            </Routes>
+          </ErrorBoundary>
         </main>
       </div>
 

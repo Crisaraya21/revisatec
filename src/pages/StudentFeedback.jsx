@@ -6,7 +6,6 @@ import './StudentDashboard.css';
 
 export default function StudentFeedback() {
   const [feedbackData, setFeedbackData] = useState(null);
-  const [professorComment, setProfessorComment] = useState('');
   const [groupName, setGroupName] = useState(null);
   const [deliveryTitle, setDeliveryTitle] = useState(null);
   const [publicationStatus, setPublicationStatus] = useState(null);
@@ -128,7 +127,6 @@ export default function StudentFeedback() {
         const fbRes = await api.get('/groups/2/feedback');
         if (!isMounted) return;
         setFeedbackData(fbRes);
-        setProfessorComment(fbRes?.professor || '');
         setGroupName(fbRes?.groupName || null);
         setDeliveryTitle(fbRes?.deliveryTitle || null);
         setPublicationStatus(fbRes?.status || null);
@@ -158,7 +156,6 @@ export default function StudentFeedback() {
           message: err.message || 'Error de conexión con Azure APIM. No se pudieron obtener los datos reales.',
         });
         setFeedbackData(null);
-        setProfessorComment('');
         setGroupName(null);
         setDeliveryTitle(null);
         setPublicationStatus(null);

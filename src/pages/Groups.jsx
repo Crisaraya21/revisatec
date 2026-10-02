@@ -4,13 +4,6 @@ import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api, ApiError } from '../lib/apiClient';
 import { Icons } from '../components/Icons';
 import './Groups.css';
-
-function formatEventDate(value) {
-  if (!value) return 'Fecha no disponible';
-  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? 'Fecha no disponible' : date.toLocaleDateString('es-CR');
-}
-
 export default function Groups() {
   const navigate = useNavigate();
   const {
@@ -89,11 +82,7 @@ export default function Groups() {
   const [newGroupRepo, setNewGroupRepo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
-  const [modalError, setModalError] = useState(null);
-  const [courseName, setCourseName] = useState(null);
-  const [calendarEvents, setCalendarEvents] = useState(null);
   const [dashboardIssues, setDashboardIssues] = useState(null);
-  const [feedbackPendingCount, setFeedbackPendingCount] = useState(null);
   const [groupMemberCounts, setGroupMemberCounts] = useState({});
 
   useEffect(() => {
@@ -101,26 +90,18 @@ export default function Groups() {
 
     let cancelled = false;
     async function loadOverview() {
-      const [coursesResult, calendarResult, issueResults, feedbackResults, memberResults] = await Promise.all([
-        api.get('/courses').catch(() => null),
-        api.get('/calendar/events').catch(() => null),
+      const [issueResults, memberResults] = await Promise.all([
         Promise.all(items.map((group) => api.get(`/groups/${group.id}/issues`).catch(() => null))),
-        Promise.all(items.map((group) => api.get(`/groups/${group.id}/feedback`).catch(() => null))),
         Promise.all(items.map((group) => api.get(`/groups/${group.id}/members`).catch(() => null))),
       ]);
 
       if (!cancelled) {
-        setCourseName(coursesResult?.items?.[0]?.name || null);
-        setCalendarEvents(Array.isArray(calendarResult?.items) ? calendarResult.items : null);
         setDashboardIssues(issueResults.some((result) => !result)
           ? null
           : issueResults.flatMap((result, index) => (result.items || []).map((issue) => ({
             ...issue,
             groupName: items[index].name,
           }))));
-        setFeedbackPendingCount(feedbackResults.some((result) => !result)
-          ? null
-          : feedbackResults.filter((result) => !result.professor).length);
         setGroupMemberCounts(Object.fromEntries(items.map((group, index) => [
           group.id,
           Array.isArray(memberResults[index]?.members) ? memberResults[index].members.length : null,
@@ -320,16 +301,6 @@ export default function Groups() {
     return url.replace(/^https?:\/\/(www\.)?github\.com\//, '');
   };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const upcomingEvents = (calendarEvents || [])
-    .filter((event) => {
-      if (!event.date) return false;
-      const date = new Date(`${event.date.slice(0, 10)}T00:00:00`);
-      return !Number.isNaN(date.getTime()) && date >= today;
-    })
-    .sort((left, right) => left.date.localeCompare(right.date));
-  const activeGroups = items.filter((group) => group.estado && group.estado.toLowerCase() !== 'completado').length;
   const unresolvedIssues = dashboardIssues?.every((issue) => typeof issue.status === 'string')
     ? dashboardIssues.filter((issue) => issue.status.toLowerCase() !== 'resuelto').length
     : null;

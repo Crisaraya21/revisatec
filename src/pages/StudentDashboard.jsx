@@ -16,7 +16,6 @@ export default function StudentDashboard() {
   const [feedbackSummary, setFeedbackSummary] = useState(null);
   const [issues, setIssues] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
-  const [membersUnavailable, setMembersUnavailable] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [toast, setToast] = useState(null);
@@ -34,7 +33,6 @@ export default function StudentDashboard() {
     async function loadStudentDashboardData() {
       setIsLoading(true);
       setApiError(null);
-      setMembersUnavailable(false);
       try {
         // 1. Cargar información del grupo desde Azure APIM
         const groupRes = await api.get('/groups/2');
@@ -72,7 +70,6 @@ export default function StudentDashboard() {
           console.warn('No se pudieron cargar los integrantes del grupo:', err);
           if (isMounted) {
             setTeamMembers([]);
-            setMembersUnavailable(true);
           }
         }
 

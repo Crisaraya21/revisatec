@@ -419,7 +419,7 @@ export default function GroupDetail() {
                     {h.status === 'completed' ? <Icons.CheckCircle /> : <Icons.Clock />}
                   </span>
                   <div className="milestone-content">
-                    <span className="milestone-title">{h.title}</span>
+                    <span className="milestone-title">{h.name || h.title || h.milestone || h.description || 'Hito del proyecto'}</span>
                     <span className={`milestone-meta ${h.status}`}>
                       {h.date} &middot; {h.status}
                     </span>

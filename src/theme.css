@@ -131,6 +131,25 @@ textarea::placeholder {
   color: var(--text-muted);
 }
 
+/* Corrección para inputs embebidos dentro de cajas de búsqueda, login o pastillas redondeadas */
+.login-input-box input,
+.issues-search-box input,
+.table-search-box input,
+.table-search-pill input,
+.search-pill input,
+.search-box input,
+.input-with-icon input,
+input.login-input,
+input.issues-search-input,
+input.table-search-input {
+  border: none !important;
+  background-color: transparent !important;
+  background: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
 /* ========================================================
    ANIMACIONES GLOBALES AL PASAR EL CURSOR (HOVER EFFECTS)
    ======================================================== */

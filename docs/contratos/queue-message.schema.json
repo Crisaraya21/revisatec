@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "revisatec/queue-message.schema.json",
+  "title": "RevisaTEC - Mensaje de cola de notificaciones",
+  "description": "Publicado por MS2 (ms-analysis) en Azure Queue Storage y consumido por MS3 (ms-notifications). Fechas en Epoch (milisegundos, UTC). Se codifica como JSON UTF-8; Queue Storage exige enviarlo en Base64 si el consumidor usa encoding Base64.",
+  "type": "object",
+  "required": ["eventId", "type", "courseId", "groupId", "title", "message", "createdAt", "source"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid", "description": "Identificador único del evento. MS3 lo usa como id de la notificación y para evitar duplicados." },
+    "type": { "type": "string", "enum": ["FEEDBACK_PUBLISHED", "ISSUE_DETECTED"] },
+    "courseId": { "type": "integer" },
+    "groupId": { "type": "integer" },
+    "title": { "type": "string", "maxLength": 120 },
+    "message": { "type": "string", "maxLength": 500 },
+    "createdAt": { "type": "integer", "description": "Epoch en milisegundos" },
+    "source": { "type": "string", "enum": ["ms-analysis"] }
+  },
+  "examples": [
+    {
+      "eventId": "3f2b8c1e-6d1a-4f6e-9a57-0c1d2e3f4a5b",
+      "type": "FEEDBACK_PUBLISHED",
+      "courseId": 1,
+      "groupId": 1,
+      "title": "Retroalimentación publicada",
+      "message": "Se publicó la retroalimentación del Grupo A",
+      "createdAt": 1792000000000,
+      "source": "ms-analysis"
+    }
+  ]
+}

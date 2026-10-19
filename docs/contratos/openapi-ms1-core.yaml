@@ -1,0 +1,586 @@
+openapi: 3.0.3
+info:
+  title: RevisaTEC - MS1 Gestión académica
+  version: 0.1.0
+  description: 'Cursos, grupos y calendario. Spring Boot (hexagonal) + Azure SQL.
+
+    Todo el tráfico entra por APIM. Fechas en Epoch (milisegundos, UTC).
+
+    Listas paginadas: { totalRecords, page, pageSize, items }. Errores: { "error": "mensaje" } con 400
+    y 404.
+
+    Los esquemas replican lo que el front de la Fase I consume de los mocks (nombres de campo incluidos:
+    avance, estado).
+
+    Algunos valores vienen como texto en los mocks ("12 / 14", "35%") y se dejaron así para no romper
+    el front.
+
+    '
+servers:
+- url: https://apimanagementcristopherarayavega.azure-api.net/revisatec
+  description: APIM (único punto de entrada)
+security:
+- subscriptionKey: []
+tags:
+- name: Health
+- name: Courses
+- name: Groups
+- name: Calendar
+paths:
+  /health:
+    get:
+      tags:
+      - Health
+      summary: Estado del servicio
+      operationId: ms1Health
+      responses:
+        '200':
+          description: Servicio activo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+                  service:
+                    type: string
+                    example: ms-core
+  /courses:
+    get:
+      tags:
+      - Courses
+      summary: Listar cursos (paginado)
+      operationId: listCourses
+      parameters:
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/search'
+      responses:
+        '200':
+          description: Lista paginada de cursos
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Course'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags:
+      - Courses
+      summary: Crear curso
+      operationId: createCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseInput'
+      responses:
+        '201':
+          description: Curso creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /courses/{id}:
+    parameters:
+    - $ref: '#/components/parameters/id'
+    get:
+      tags:
+      - Courses
+      summary: Obtener curso
+      operationId: getCourse
+      responses:
+        '200':
+          description: Curso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+      - Courses
+      summary: Actualizar curso
+      description: Corrige la ruta mal escrita de la Fase I (/PUT /courses/{id}).
+      operationId: updateCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CourseInput'
+      responses:
+        '200':
+          description: Curso actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Course'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+      - Courses
+      summary: Eliminar curso
+      operationId: deleteCourse
+      responses:
+        '200':
+          description: Curso eliminado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deleted'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /groups:
+    get:
+      tags:
+      - Groups
+      summary: Listar grupos (paginado), con avance y estado
+      operationId: listGroups
+      parameters:
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/search'
+      - name: courseId
+        in: query
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Lista paginada de grupos
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags:
+      - Groups
+      summary: Crear grupo
+      operationId: createGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupInput'
+      responses:
+        '201':
+          description: Grupo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /groups/{id}:
+    parameters:
+    - $ref: '#/components/parameters/id'
+    get:
+      tags:
+      - Groups
+      summary: Obtener grupo
+      operationId: getGroup
+      responses:
+        '200':
+          description: Grupo con métricas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags:
+      - Groups
+      summary: Actualizar grupo
+      operationId: updateGroup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupInput'
+      responses:
+        '200':
+          description: Grupo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Group'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+      - Groups
+      summary: Eliminar grupo
+      operationId: deleteGroup
+      responses:
+        '200':
+          description: Grupo eliminado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deleted'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /calendar/events:
+    get:
+      tags:
+      - Calendar
+      summary: Listar eventos del calendario (paginado)
+      operationId: listCalendarEvents
+      parameters:
+      - $ref: '#/components/parameters/page'
+      - $ref: '#/components/parameters/pageSize'
+      - $ref: '#/components/parameters/search'
+      - name: from
+        in: query
+        description: Epoch ms, inicio del rango (inclusive)
+        schema:
+          type: integer
+          format: int64
+      - name: to
+        in: query
+        description: Epoch ms, fin del rango (inclusive)
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Lista paginada de eventos
+          content:
+            application/json:
+              schema:
+                allOf:
+                - $ref: '#/components/schemas/PageMeta'
+                - type: object
+                  properties:
+                    items:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/CalendarEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+    post:
+      tags:
+      - Calendar
+      summary: Crear evento
+      operationId: createCalendarEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarEventInput'
+      responses:
+        '201':
+          description: Evento creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+  /calendar/events/{id}:
+    parameters:
+    - $ref: '#/components/parameters/id'
+    put:
+      tags:
+      - Calendar
+      summary: Actualizar evento
+      operationId: updateCalendarEvent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalendarEventInput'
+      responses:
+        '200':
+          description: Evento actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarEvent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+      - Calendar
+      summary: Eliminar evento
+      operationId: deleteCalendarEvent
+      responses:
+        '200':
+          description: Evento eliminado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Deleted'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /groups/{id}/members:
+    parameters:
+    - $ref: '#/components/parameters/id'
+    get:
+      tags:
+      - Groups
+      summary: Integrantes del grupo
+      operationId: listGroupMembers
+      description: Lo usa el front de la Fase I (detalle de grupo, 'Mi grupo', lista de grupos) pero no
+        estaba en docs/endpoints.md.
+      responses:
+        '200':
+          description: Integrantes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  members:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Member'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    subscriptionKey:
+      type: apiKey
+      in: header
+      name: Ocp-Apim-Subscription-Key
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    pageSize:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+    search:
+      name: search
+      in: query
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Solicitud inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: string
+          example: Curso no encontrado
+    Deleted:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Grupo eliminado
+    PageMeta:
+      type: object
+      required:
+      - totalRecords
+      - page
+      - pageSize
+      - items
+      properties:
+        totalRecords:
+          type: integer
+          example: 42
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 10
+    CourseInput:
+      type: object
+      required:
+      - name
+      description: La Fase I solo usa id y name del curso.
+      properties:
+        name:
+          type: string
+          example: Diseño de Software
+    Course:
+      allOf:
+      - $ref: '#/components/schemas/CourseInput'
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            type: integer
+            example: 1
+    GroupInput:
+      type: object
+      required:
+      - name
+      properties:
+        name:
+          type: string
+          example: Grupo A
+        repoUrl:
+          type: string
+          format: uri
+          example: https://github.com/org/repo
+    Group:
+      allOf:
+      - $ref: '#/components/schemas/GroupInput'
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            type: integer
+            example: 1
+          avance:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Avance (%). La lista debe incluirlo.
+            example: 71
+          estado:
+            type: string
+            enum:
+            - En progreso
+            - Alerta
+            description: Valores que el front compara tal cual.
+    CalendarEventInput:
+      type: object
+      required:
+      - title
+      - date
+      properties:
+        title:
+          type: string
+          example: 'Entrega 2: Prototipo'
+        date:
+          type: integer
+          format: int64
+          description: 'Epoch ms. La Fase I usaba ''YYYY-MM-DD'': el front debe convertir.'
+          example: 1794218400000
+        type:
+          type: string
+          enum:
+          - blue
+          - green
+          - amber
+          default: blue
+          description: Color de la pastilla en el calendario
+        audience:
+          type: string
+          example: Todos los grupos
+        subtitle:
+          type: string
+          nullable: true
+    CalendarEvent:
+      allOf:
+      - $ref: '#/components/schemas/CalendarEventInput'
+      - type: object
+        required:
+        - id
+        properties:
+          id:
+            type: integer
+            example: 1
+    GroupDetail:
+      allOf:
+      - $ref: '#/components/schemas/Group'
+      - type: object
+        properties:
+          score:
+            type: number
+            example: 85
+          course:
+            type: string
+            example: Diseño de Software
+          reviewedPRs:
+            type: string
+            example: 12 / 14
+          unreviewedPRs:
+            type: integer
+            example: 2
+          commitsCount:
+            type: integer
+            example: 96
+          commitsWeek:
+            type: string
+            example: +18 esta semana
+          myContribution:
+            type: integer
+            description: Aporte (%) del estudiante autenticado
+            example: 18
+    Member:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          example: Estudiante
+        contribution:
+          type: string
+          example: 35%
+        initials:
+          type: string
+          example: SP

@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: RevisaTEC - MS3 Notifications
+  version: 0.1.0
+  description: |
+    Consume la cola de Azure Queue Storage, persiste el historial y entrega
+    notificaciones en tiempo real. Node.js / Express.
+    El consumidor de la cola es un proceso interno (no HTTP); ver queue-message.schema.json.
+    Todo el tráfico HTTP entra por APIM. Fechas en Epoch (milisegundos, UTC).
+    El canal en vivo (Web PubSub o SignalR, decisión D1) no pasa por APIM:
+    por APIM solo pasa GET /notifications/realtime-token.
+servers:
+  - url: https://apimanagementcristopherarayavega.azure-api.net/revisatec
+    description: APIM (único punto de entrada)
+security:
+  - subscriptionKey: []
+tags:
+  - name: Health
+  - name: Notifications
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Estado del servicio
+      operationId: ms3Health
+      responses:
+        '200':
+          description: Servicio activo
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: UP }
+                  service: { type: string, example: ms-notifications }
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Historial de notificaciones (más recientes primero)
+      operationId: listNotifications
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - name: unreadOnly
+          in: query
+          schema: { type: boolean, default: false }
+      responses:
+        '200':
+          description: Lista paginada de notificaciones
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [totalRecords, page, pageSize, items]
+                properties:
+                  totalRecords: { type: integer }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Notification' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: Marcar notificación como leída
+      operationId: markNotificationRead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Identificador de la notificación (eventId de la cola)
+          schema: { type: string }
+      responses:
+        '200':
+          description: Notificación actualizada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /notifications/realtime-token:
+    get:
+      tags: [Notifications]
+      summary: Acceso al canal de tiempo real
+      description: Entrega al front la URL y el token para conectarse al canal en vivo (D1).
+      operationId: getRealtimeToken
+      responses:
+        '200':
+          description: Credenciales temporales del canal
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url, token, expiresAt]
+                properties:
+                  url: { type: string, format: uri, description: URL del canal (wss) }
+                  token: { type: string }
+                  expiresAt: { type: integer, format: int64, description: Epoch ms }
+components:
+  securitySchemes:
+    subscriptionKey:
+      type: apiKey
+      in: header
+      name: Ocp-Apim-Subscription-Key
+  responses:
+    BadRequest:
+      description: Solicitud inválida
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    Notification:
+      type: object
+      required: [id, type, title, message, createdAt, read]
+      properties:
+        id: { type: string, description: Igual al eventId del mensaje de cola }
+        type: { type: string, enum: [FEEDBACK_PUBLISHED, ISSUE_DETECTED] }
+        courseId: { type: integer }
+        groupId: { type: integer }
+        title: { type: string }
+        message: { type: string }
+        createdAt: { type: integer, format: int64, description: Epoch ms }
+        read: { type: boolean }
+        readAt: { type: integer, format: int64, nullable: true, description: Epoch ms }

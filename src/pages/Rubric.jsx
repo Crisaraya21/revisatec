@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/apiClient';
+import { coursesApi } from '../api';
 import './Rubric.css';
 
 // Iconos SVG para Rúbrica
@@ -88,11 +89,16 @@ export default function Rubric() {
       setApiError(null);
       try {
         const [coursesRes, rubricRes, instructionsRes, configRes] = await Promise.all([
-          api.get('/courses'),
+          coursesApi.list(),
           api.get('/courses/1/rubric'),
           api.get('/courses/1/instructions'),
           api.get('/courses/1/scraping-config'),
         ]);
+        const coursesList = Array.isArray(coursesRes?.content)
+          ? coursesRes.content
+          : Array.isArray(coursesRes?.items)
+          ? coursesRes.items
+          : [];
         const loadedSettings = {
           criteria: Array.isArray(rubricRes?.criteria) ? rubricRes.criteria : [],
           instructions: instructionsRes?.text || '',
@@ -101,7 +107,7 @@ export default function Rubric() {
           nextRunAt: configRes?.nextRunAt || null,
           fileName: rubricRes?.fileName || '',
           interpretationStatus: rubricRes?.interpretationStatus || '',
-          courseName: coursesRes?.items?.find((course) => course.id === 1)?.name || null,
+          courseName: coursesList.find((course) => course.id === 1)?.name || null,
         };
         setCriteria(loadedSettings.criteria);
         setInstructions(loadedSettings.instructions);

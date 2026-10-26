@@ -17,7 +17,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     calendarApi.listEvents()
-      .then((res) => setEventsList(res.items || []))
+      .then((res) => setEventsList(Array.isArray(res?.content) ? res.content : Array.isArray(res?.items) ? res.items : []))
       .catch((err) => console.warn('Error al cargar eventos en Dashboard:', err));
 
     api.get('/groups/1/issues')

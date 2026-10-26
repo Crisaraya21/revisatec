@@ -32,12 +32,22 @@ export function usePaginatedList(endpoint, { pageSize = 5 } = {}) {
   // Buscar siempre regresa a la página 1
   const updateSearch = (value) => { setSearch(value); setPage(1); };
 
+  const itemsList = Array.isArray(data?.content)
+    ? data.content
+    : Array.isArray(data?.items)
+    ? data.items
+    : [];
+  const total =
+    data?.totalElements ?? data?.totalRecords ?? itemsList.length;
+  const calculatedTotalPages =
+    data?.totalPages ?? Math.max(1, Math.ceil(total / pageSize));
+
   return {
-    items: data?.items || [],
-    totalRecords: data?.totalRecords ?? (data?.items?.length || 0),
+    items: itemsList,
+    totalRecords: total,
     page,
     pageSize,
-    totalPages: Math.max(1, Math.ceil((data?.totalRecords ?? (data?.items?.length || 0)) / pageSize)),
+    totalPages: calculatedTotalPages,
     search,
     status,
     error,

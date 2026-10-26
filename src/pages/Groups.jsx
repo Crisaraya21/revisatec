@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api, ApiError } from '../lib/apiClient';
+import { groupsApi } from '../api';
 import { Icons } from '../components/Icons';
 import './Groups.css';
 export default function Groups() {
@@ -137,7 +138,7 @@ export default function Groups() {
     setFormError(null);
 
     try {
-      const res = await api.post('/groups', {
+      const res = await groupsApi.create({
         name: newGroupName.trim(),
         repoUrl: newGroupRepo.trim() || undefined,
       });
@@ -194,7 +195,7 @@ export default function Groups() {
     setFormError(null);
 
     try {
-      const res = await api.put(`/groups/${editingGroup.id}`, {
+      const res = await groupsApi.update(editingGroup.id, {
         name: editName.trim(),
         repoUrl: editRepo.trim() || undefined,
       });
@@ -239,7 +240,7 @@ export default function Groups() {
 
     setIsSubmitting(true);
     try {
-      const res = await api.delete(`/groups/${deletingGroup.id}`);
+      const res = await groupsApi.remove(deletingGroup.id);
       const msg = res?.message || 'Grupo eliminado';
       const updatedDeleted = [...deletedGroupIds, deletingGroup.id];
       setDeletedGroupIds(updatedDeleted);

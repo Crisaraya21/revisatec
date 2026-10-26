@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../lib/apiClient';
+import { groupsApi } from '../api';
 import { Icons } from '../components/Icons';
 import './GroupDetail.css';
 
@@ -28,7 +29,7 @@ export default function GroupDetail() {
       try {
         // Consultas a Azure APIM
         const [groupRes, membersRes, analysisRes, issuesRes, reportRes] = await Promise.all([
-          api.get(`/groups/${groupId}`),
+          groupsApi.get(groupId),
           api.get(`/groups/${groupId}/members`).catch((err) => {
             console.warn('Members mock no disponible:', err);
             return { members: [] };

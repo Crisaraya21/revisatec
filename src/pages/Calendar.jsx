@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { api, ApiError } from '../lib/apiClient';
 import { calendarApi } from '../api';
-import { fromEpochMs, formatDate, toInputValue } from '../utils/date';
+import { fromEpochMs, toEpochMs, formatDate, toInputValue } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Calendar.css';
 import './Groups.css';
@@ -145,9 +145,13 @@ export default function Calendar() {
           search,
         });
         if (!isMounted) return;
-        const rawItems = Array.isArray(res?.items) ? res.items : [];
+        const rawItems = Array.isArray(res?.content)
+          ? res.content
+          : Array.isArray(res?.items)
+          ? res.items
+          : [];
         setEventsList(rawItems);
-        setTotalRecords(res?.totalRecords ?? rawItems.length);
+        setTotalRecords(res?.totalElements ?? res?.totalRecords ?? rawItems.length);
         const firstEventDate = parseEventDate(rawItems[0]?.date);
         if (firstEventDate) {
           setCurrentMonth(new Date(firstEventDate.getFullYear(), firstEventDate.getMonth(), 1));
@@ -204,16 +208,17 @@ export default function Calendar() {
     setFormError(null);
 
     try {
-      const res = await api.post('/calendar/events', {
+      const epochDate = toEpochMs(newDate);
+      const res = await calendarApi.createEvent({
         title: newTitle.trim(),
-        date: newDate,
+        date: epochDate,
         type: newType,
         audience: newAudience,
       });
       const newEventObj = {
         id: res?.id || Date.now(),
         title: res?.title || newTitle.trim(),
-        date: newDate,
+        date: epochDate,
         type: newType,
         audience: newAudience,
       };
@@ -228,7 +233,7 @@ export default function Calendar() {
         'success',
         201,
         'Hito Creado (HTTP 201 Created)',
-        `Se registró "${res.title || newTitle}" correctamente en Azure APIM.`
+        `Se registró "${res?.title || newTitle}" correctamente en Azure APIM.`
       );
     } catch (err) {
       console.error('Error al crear evento:', err);
@@ -260,17 +265,18 @@ export default function Calendar() {
     setFormError(null);
 
     try {
-      const res = await api.put(`/calendar/events/${editingEvent.id}`, {
+      const epochDate = toEpochMs(editDate);
+      const res = await calendarApi.updateEvent(editingEvent.id, {
         title: editTitle.trim(),
-        date: editDate,
+        date: epochDate,
         audience: editAudience,
       });
 
-      const updatedTitle = res.title || editTitle;
+      const updatedTitle = res?.title || editTitle;
       const updatedItem = {
         ...editingEvent,
         title: updatedTitle,
-        date: editDate,
+        date: epochDate,
         audience: editAudience,
       };
       const updatedEdited = { ...editedEvents, [editingEvent.id]: updatedItem };
@@ -302,7 +308,7 @@ export default function Calendar() {
 
     setIsSubmitting(true);
     try {
-      const res = await api.delete(`/calendar/events/${deletingEvent.id}`);
+      const res = await calendarApi.removeEvent(deletingEvent.id);
       const msg = res?.message || 'Evento eliminado';
 
       const updatedDeleted = [...deletedEventIds, deletingEvent.id];

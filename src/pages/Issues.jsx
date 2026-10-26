@@ -1,5 +1,6 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/apiClient';
+import { formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Issues.css';
 
@@ -289,7 +290,7 @@ export default function Issues() {
                       </td>
 
                       <td>
-                        <span className="issue-detected-time">{item.detected}</span>
+                        <span className="issue-detected-time">{formatDate(item.detected)}</span>
                       </td>
 
                       <td className="issues-status-cell">

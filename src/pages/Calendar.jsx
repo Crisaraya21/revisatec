@@ -232,14 +232,14 @@ export default function Calendar() {
       showToast(
         'success',
         201,
-        'Hito Creado (HTTP 201 Created)',
-        `Se registró "${res?.title || newTitle}" correctamente en Azure APIM.`
+        'Hito Creado',
+        `Se registró "${res?.title || newTitle}" correctamente.`
       );
     } catch (err) {
       console.error('Error al crear evento:', err);
       const code = err instanceof ApiError ? err.status : 400;
       setFormError(err.message || 'Error al crear el hito.');
-      showToast('error', code, `Error HTTP ${code}`, err.message || 'Datos inválidos al crear.');
+      showToast('error', code, 'Error al crear', err.message || 'Datos inválidos al crear.');
     } finally {
       setIsSubmitting(false);
     }
@@ -289,14 +289,14 @@ export default function Calendar() {
       showToast(
         'success',
         200,
-        'Hito Actualizado (HTTP 200 OK)',
-        `El evento #${editingEvent.id} se actualizó a "${updatedTitle}" en Azure APIM.`
+        'Hito Actualizado',
+        `El evento #${editingEvent.id} se actualizó a "${updatedTitle}".`
       );
     } catch (err) {
       console.error('Error al actualizar evento:', err);
       const code = err instanceof ApiError ? err.status : 400;
       setFormError(err.message || 'Error al actualizar.');
-      showToast('error', code, `Error HTTP ${code}`, err.message || 'Error en actualización.');
+      showToast('error', code, 'Error en actualización', err.message || 'Error en actualización.');
     } finally {
       setIsSubmitting(false);
     }
@@ -321,8 +321,8 @@ export default function Calendar() {
       showToast(
         'success',
         200,
-        'Hito Eliminado (HTTP 200 OK)',
-        `${msg}: "${deletingEvent.title}" fue removido de Azure APIM.`
+        'Hito Eliminado',
+        `${msg}: "${deletingEvent.title}" fue removido.`
       );
     } catch (err) {
       console.error('Error al eliminar evento:', err);

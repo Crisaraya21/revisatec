@@ -1,9 +1,16 @@
 // Cliente central de la API (Mock Services en Azure APIM).
 // La URL base y la clave NUNCA se hardcodean ni se suben al repo: vienen de
 // variables de entorno que GitHub Actions inyecta en el build (ver .env.example).
+const isDev = import.meta.env.DEV;
+const isLocal =
+  typeof window !== 'undefined' &&
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
 const BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  'https://apimanagementcristopherarayavega.azure-api.net/revisatec';
+  isDev || isLocal
+    ? '/revisatec-api'
+    : (import.meta.env.VITE_API_BASE_URL ||
+       'https://apimanagementcristopherarayavega.azure-api.net/revisatec');
 
 const API_SUBSCRIPTION_KEY =
   import.meta.env.VITE_API_SUBSCRIPTION_KEY ||

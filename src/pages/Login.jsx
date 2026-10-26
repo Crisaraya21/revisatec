@@ -70,7 +70,9 @@ export default function Login() {
                 Correo institucional
               </label>
               <div className="login-input-box">
-                <span className="login-input-icon">✉</span>
+                <span className="login-input-icon">
+                  <Icons.Mail width={17} height={17} />
+                </span>
                 <input
                   id="inst-email"
                   type="email"

@@ -112,12 +112,12 @@ body {
 }
 
 /* Prevención global de fondos blancos en campos de texto en modo oscuro */
-input[type="text"],
-input[type="search"],
-input[type="email"],
-input[type="password"],
-input[type="number"],
-input[type="date"],
+input:not(.login-input)[type="text"],
+input:not(.login-input)[type="search"],
+input:not(.login-input)[type="email"],
+input:not(.login-input)[type="password"],
+input:not(.login-input)[type="number"],
+input:not(.login-input)[type="date"],
 select,
 textarea {
   background-color: var(--bg-surface);
@@ -283,15 +283,15 @@ tbody tr:hover {
 }
 
 /* Inputs y Selects */
-input, select, textarea {
+input:not(.login-input), select, textarea {
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease !important;
 }
 
-input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) {
+input:not(.login-input):hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) {
   border-color: var(--border-strong);
 }
 
-input:focus, select:focus, textarea:focus {
+input:not(.login-input):focus, select:focus, textarea:focus {
   transform: translateY(-1px);
   border-color: var(--action-primary) !important;
   box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15) !important;

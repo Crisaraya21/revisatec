@@ -162,14 +162,14 @@ export default function Groups() {
       showToast(
         'success',
         201,
-        'Grupo Creado (HTTP 201 Created)',
-        `Se registró "${res?.name || newGroupName}" correctamente en Azure APIM.`
+        'Grupo Creado',
+        `Se registró "${res?.name || newGroupName}" correctamente.`
       );
     } catch (err) {
       console.error('Error al crear grupo:', err);
       const code = err instanceof ApiError ? err.status : 400;
       setFormError(err.message || 'Error al crear el grupo.');
-      showToast('error', code, `Error HTTP ${code}`, err.message || 'Datos inválidos al crear.');
+      showToast('error', code, 'Error al crear', err.message || 'Datos inválidos al crear.');
     } finally {
       setIsSubmitting(false);
     }
@@ -216,14 +216,14 @@ export default function Groups() {
       showToast(
         'success',
         200,
-        'Grupo Actualizado (HTTP 200 OK)',
-        `El grupo #${editingGroup.id} se actualizó a "${updatedName}" en Azure APIM.`
+        'Grupo Actualizado',
+        `El grupo #${editingGroup.id} se actualizó a "${updatedName}".`
       );
     } catch (err) {
       console.error('Error al actualizar grupo:', err);
       const code = err instanceof ApiError ? err.status : 400;
       setFormError(err.message || 'Error al actualizar.');
-      showToast('error', code, `Error HTTP ${code}`, err.message || 'Error en actualización.');
+      showToast('error', code, 'Error en actualización', err.message || 'No se pudo actualizar el grupo.');
     } finally {
       setIsSubmitting(false);
     }
@@ -252,8 +252,8 @@ export default function Groups() {
       showToast(
         'success',
         200,
-        'Grupo Eliminado (HTTP 200 OK)',
-        `${msg}: "${deletingGroup.name}" ha sido removido del mock en Azure.`
+        'Grupo Eliminado',
+        `${msg}: "${deletingGroup.name}" ha sido removido.`
       );
     } catch (err) {
       console.error('Error al eliminar grupo:', err);
@@ -264,31 +264,7 @@ export default function Groups() {
     }
   };
 
-  // ----------------------------------------------------
-  // SIMULACIÓN DE ESTADOS DE ERROR HTTP (404)
-  // ----------------------------------------------------
-  const handleSimulateError404 = async () => {
-    try {
-      await api.get('/inexistente');
-    } catch (err) {
-      if (err instanceof ApiError) {
-        showToast(
-          'error',
-          err.status,
-          `Error HTTP ${err.status} (${err.status === 404 ? 'Not Found' : 'Error'})`,
-          err.message || 'Recurso no encontrado en Azure APIM.'
-        );
-      } else {
-        console.error('Error de conexión con Azure APIM:', err);
-        showToast(
-          'error',
-          503,
-          'Sin Conexión con APIM',
-          'No se pudo conectar con Azure APIM. El servicio se encuentra inactivo.'
-        );
-      }
-    }
-  };
+
 
   const formatRepoSlug = (url, fallbackName) => {
     if (!url) return fallbackName ? 'Repositorio no disponible' : '—';
@@ -362,19 +338,6 @@ export default function Groups() {
         </div>
 
         <div className="course-header-right" style={{ flexWrap: 'wrap', gap: 10 }}>
-          {/* Botones de simulación de errores HTTP para evaluación */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            <button
-              type="button"
-              onClick={handleSimulateError404}
-              className="course-selector-btn"
-              title="Prueba el manejo visual de un error HTTP 404 Not Found"
-              style={{ fontSize: '0.781rem', padding: '7px 10px' }}
-            >
-              Simular Error 404
-            </button>
-          </div>
-
           <button
             type="button"
             onClick={() => {
@@ -839,8 +802,8 @@ export default function Groups() {
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
                   Crear Nuevo Grupo
                 </h3>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Operación: POST /groups (Espera 201 Created)
+                <span style={{ fontSize: '0.781rem', color: 'var(--text-muted)' }}>
+                  Registra un nuevo grupo de trabajo y su repositorio.
                 </span>
               </div>
               <button
@@ -871,12 +834,13 @@ export default function Groups() {
                   required
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    padding: '10px 14px',
                     borderRadius: 8,
                     border: '1px solid var(--border-default)',
-                    background: 'var(--bg-sunken)',
+                    backgroundColor: 'var(--bg-surface)',
                     color: 'var(--text-primary)',
                     boxSizing: 'border-box',
+                    fontSize: '0.875rem',
                   }}
                 />
               </div>
@@ -892,12 +856,13 @@ export default function Groups() {
                   onChange={(e) => setNewGroupRepo(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    padding: '10px 14px',
                     borderRadius: 8,
                     border: '1px solid var(--border-default)',
-                    background: 'var(--bg-sunken)',
+                    backgroundColor: 'var(--bg-surface)',
                     color: 'var(--text-primary)',
                     boxSizing: 'border-box',
+                    fontSize: '0.875rem',
                   }}
                 />
               </div>
@@ -917,7 +882,7 @@ export default function Groups() {
                   className="btn-primary-action"
                   style={{ padding: '8px 18px' }}
                 >
-                  {isSubmitting ? 'Creando en APIM...' : 'Crear Grupo (201)'}
+                  {isSubmitting ? 'Creando grupo...' : 'Crear Grupo'}
                 </button>
               </div>
             </form>
@@ -959,8 +924,8 @@ export default function Groups() {
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
                   Editar Grupo #{editingGroup.id}
                 </h3>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  Operación: PUT /groups/{editingGroup.id} (Espera 200 OK)
+                <span style={{ fontSize: '0.781rem', color: 'var(--text-muted)' }}>
+                  Actualiza el nombre o repositorio del grupo.
                 </span>
               </div>
               <button
@@ -990,12 +955,13 @@ export default function Groups() {
                   required
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    padding: '10px 14px',
                     borderRadius: 8,
                     border: '1px solid var(--border-default)',
-                    background: 'var(--bg-sunken)',
+                    backgroundColor: 'var(--bg-surface)',
                     color: 'var(--text-primary)',
                     boxSizing: 'border-box',
+                    fontSize: '0.875rem',
                   }}
                 />
               </div>
@@ -1010,12 +976,13 @@ export default function Groups() {
                   onChange={(e) => setEditRepo(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px',
+                    padding: '10px 14px',
                     borderRadius: 8,
                     border: '1px solid var(--border-default)',
-                    background: 'var(--bg-sunken)',
+                    backgroundColor: 'var(--bg-surface)',
                     color: 'var(--text-primary)',
                     boxSizing: 'border-box',
+                    fontSize: '0.875rem',
                   }}
                 />
               </div>
@@ -1035,7 +1002,7 @@ export default function Groups() {
                   className="btn-primary-action"
                   style={{ padding: '8px 18px' }}
                 >
-                  {isSubmitting ? 'Actualizando...' : 'Guardar Cambios (200)'}
+                  {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
             </form>
@@ -1044,7 +1011,7 @@ export default function Groups() {
       )}
 
       {/* ------------------------------------------------------------------ */}
-      {/* MODAL 3: CONFIRMAR ELIMINACIÓN (DELETE /groups/{id} -> 200 OK)     */}
+      {/* MODAL 3: CONFIRMAR ELIMINACIÓN                                    */}
       {/* ------------------------------------------------------------------ */}
       {deletingGroup && (
         <div
@@ -1094,7 +1061,7 @@ export default function Groups() {
             </h3>
 
             <p style={{ margin: '0 0 20px 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              Esta acción llamará a <strong>DELETE /groups/{deletingGroup.id}</strong> en Azure APIM para remover a <strong>{deletingGroup.name}</strong>.
+              ¿Estás seguro de que deseas eliminar al grupo <strong>{deletingGroup.name}</strong>? Esta acción no se puede deshacer.
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
@@ -1120,7 +1087,7 @@ export default function Groups() {
                   cursor: 'pointer',
                 }}
               >
-                {isSubmitting ? 'Eliminando...' : 'Sí, eliminar (200)'}
+                {isSubmitting ? 'Eliminando...' : 'Sí, eliminar grupo'}
               </button>
             </div>
           </div>

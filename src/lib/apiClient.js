@@ -39,9 +39,19 @@ async function request(path, options = {}) {
   return body;
 }
 
+export function buildQuery({ page, pageSize, search } = {}) {
+  const params = new URLSearchParams();
+  if (page !== undefined && page !== null) params.set('page', String(page));
+  if (pageSize !== undefined && pageSize !== null) params.set('pageSize', String(pageSize));
+  if (search !== undefined && search !== null && search.trim() !== '') params.set('search', search.trim());
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : '';
+}
+
 export const api = {
   get: (path) => request(path, { method: 'GET' }),
   post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),
   put: (path, data) => request(path, { method: 'PUT', body: JSON.stringify(data) }),
+  patch: (path, data) => request(path, { method: 'PATCH', body: data !== undefined ? JSON.stringify(data) : undefined }),
   delete: (path) => request(path, { method: 'DELETE' }),
 };

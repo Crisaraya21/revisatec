@@ -1,18 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { api, ApiError } from '../lib/apiClient';
+import { calendarApi } from '../api';
+import { fromEpochMs, formatDate, toInputValue } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Calendar.css';
 import './Groups.css';
 
 function parseEventDate(value) {
-  if (!value) return null;
-  const date = new Date(`${value.slice(0, 10)}T00:00:00`);
-  return Number.isNaN(date.getTime()) ? null : date;
+  return fromEpochMs(value);
 }
 
 function formatDateKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return toInputValue(date, 'date');
 }
 
 function CalendarEventRow({ event }) {
@@ -139,13 +139,11 @@ export default function Calendar() {
     async function loadEventsData() {
       try {
         setApiError(null);
-        const params = new URLSearchParams({
-          page: String(page),
-          pageSize: String(pageSize),
-          search: search.trim(),
+        const res = await calendarApi.listEvents({
+          page,
+          pageSize,
+          search,
         });
-
-        const res = await api.get(`/calendar/events?${params}`);
         if (!isMounted) return;
         const rawItems = Array.isArray(res?.items) ? res.items : [];
         setEventsList(rawItems);
@@ -246,7 +244,7 @@ export default function Calendar() {
   const handleOpenEdit = (ev) => {
     setEditingEvent(ev);
     setEditTitle(ev.title || '');
-    setEditDate(ev.date || '2026-10-15');
+    setEditDate(toInputValue(ev.date, 'date') || '2026-10-15');
     setEditAudience(ev.audience || 'Todos los grupos');
     setFormError(null);
   };
@@ -761,7 +759,7 @@ export default function Calendar() {
                       </div>
                     </td>
                     <td>
-                      <span style={{ color: 'var(--text-secondary)' }}>{ev.date}</span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{formatDate(ev.date)}</span>
                     </td>
                     <td>
                       <span style={{ fontSize: '0.781rem', color: 'var(--text-muted)' }}>

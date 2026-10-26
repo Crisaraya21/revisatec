@@ -2,19 +2,21 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api } from '../lib/apiClient';
+import { calendarApi } from '../api';
+import { fromEpochMs, formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Groups.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { items, totalRecords, status } = usePaginatedList('/groups', { pageSize: 5 });
+  const { items, totalRecords } = usePaginatedList('/groups', { pageSize: 5 });
 
   // Eventos e inconvenientes dinámicos desde APIM
   const [eventsList, setEventsList] = useState([]);
   const [issuesList, setIssuesList] = useState([]);
 
   useEffect(() => {
-    api.get('/calendar/events')
+    calendarApi.listEvents()
       .then((res) => setEventsList(res.items || []))
       .catch((err) => console.warn('Error al cargar eventos en Dashboard:', err));
 
@@ -243,9 +245,17 @@ export default function Dashboard() {
                 </div>
               ) : (
                 eventsList.slice(0, 3).map((ev) => {
-                  const parts = ev.date ? ev.date.split('-') : [];
-                  const monthStr = parts[1] === '10' ? 'OCT' : parts[1] === '09' ? 'SEP' : parts[1] === '11' ? 'NOV' : 'OCT';
-                  const dayStr = parts[2] || '01';
+                  const dateObj = fromEpochMs(ev.date);
+                  let monthStr = '—';
+                  let dayStr = '—';
+                  if (dateObj) {
+                    try {
+                      monthStr = new Intl.DateTimeFormat('es-CR', { month: 'short' }).format(dateObj).replace('.', '').slice(0, 3).toUpperCase();
+                      dayStr = String(dateObj.getDate()).padStart(2, '0');
+                    } catch {
+                      dayStr = String(dateObj.getDate());
+                    }
+                  }
 
                   return (
                     <div key={ev.id} className="event-row">
@@ -285,7 +295,7 @@ export default function Dashboard() {
                     </div>
                     <div className="issue-mini-info">
                       <span className="issue-mini-title">{iss.type}</span>
-                      <span className="issue-mini-meta">{iss.groupName} · {iss.date}</span>
+                      <span className="issue-mini-meta">{iss.groupName} · {formatDate(iss.date)}</span>
                     </div>
                   </div>
                 ))

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api, ApiError } from '../lib/apiClient';
+import { api, ApiError, buildQuery } from '../lib/apiClient';
 
 // Sirve para CUALQUIER pantalla de listado (Grupos, Inconvenientes, etc.)
 // porque todos los mocks del equipo deben responder con la misma forma:
@@ -15,8 +15,7 @@ export function usePaginatedList(endpoint, { pageSize = 5 } = {}) {
     setStatus('loading');
     setError(null);
     try {
-      const params = new URLSearchParams({ page, pageSize, search });
-      const result = await api.get(`${endpoint}?${params}`);
+      const result = await api.get(`${endpoint}${buildQuery({ page, pageSize, search })}`);
       setData(result);
       setStatus('success');
     } catch (err) {

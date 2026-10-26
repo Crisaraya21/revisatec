@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import { Icons } from './components/Icons';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { NotificationBell } from './components/NotificationBell';
 
 // Pantallas
 import Login from './pages/Login';
@@ -96,14 +97,7 @@ function MainAppShell() {
           </button>
 
           {/* Campana de Notificaciones */}
-          <button
-            type="button"
-            className="icon-circle-btn btn-bell-notification"
-            title="Notificaciones"
-            aria-label="Notificaciones"
-          >
-            <Icons.Bell />
-          </button>
+          <NotificationBell />
 
           {/* Menú de Perfil (Profesor o Estudiante) */}
           <div style={{ position: 'relative' }}>

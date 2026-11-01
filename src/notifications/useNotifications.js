@@ -1,69 +1,185 @@
-import { useState, useMemo, useCallback } from 'react';
+﻿import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { INITIAL_MOCK_NOTIFICATIONS } from './mockNotifications';
+import { notificationsApi } from '../api/notificationsApi';
+import { connectRealtime } from './realtimeClient';
+
+const dataSource = import.meta.env.VITE_NOTIFICATIONS_SOURCE || 'api';
 
 /**
- * Hook para la gestión de notificaciones en el cliente (Fase A).
- * Inicializado con datos simulados alineados al contrato de MS3.
- *
- * Casos de prueba cubiertos:
- * 1. Inicialización: Carga inicial de items simulados, estado 'success' y conteo correcto de no leídas.
- * 2. markAsRead(id): Marca como leída una notificación específica y decrementa unreadCount sin mutar el arreglo original.
- * 3. markAllAsRead(): Marca todas las notificaciones como leídas, dejando unreadCount en 0.
- * 4. reload(): Simula recarga y refresco de estado para reconexión con MS3 en Fase B.
+ * Hook central para la gestión de notificaciones en tiempo real del frontend.
+ * Soporta fuentes de datos 'api' (con WebSocket de Web PubSub) y 'mock'.
  *
  * @returns {{
  *   items: Array<object>,
  *   unreadCount: number,
  *   status: 'idle' | 'loading' | 'success' | 'error',
  *   error: string | null,
- *   markAsRead: (id: string) => void,
- *   markAllAsRead: () => void,
+ *   connectionStatus: 'connecting' | 'live' | 'reconnecting' | 'offline',
+ *   lastIncomingNotification: object | null,
+ *   markAsRead: (id: string) => Promise<void>,
+ *   markAllAsRead: () => Promise<void>,
  *   reload: () => Promise<void>
  * }}
  */
 export function useNotifications() {
-  const [items, setItems] = useState(() => [...INITIAL_MOCK_NOTIFICATIONS]);
-  const [status, setStatus] = useState('success');
+  const isMock = dataSource === 'mock';
+
+  const [items, setItems] = useState(() => (isMock ? [...INITIAL_MOCK_NOTIFICATIONS] : []));
+  const [status, setStatus] = useState(isMock ? 'success' : 'loading');
   const [error, setError] = useState(null);
+  const [connectionStatus, setConnectionStatus] = useState(isMock ? 'live' : 'connecting');
+  const [lastIncomingNotification, setLastIncomingNotification] = useState(null);
+
+  const itemsRef = useRef(items);
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const unreadCount = useMemo(
     () => items.filter((item) => !item.read).length,
     [items]
   );
 
-  const markAsRead = useCallback((id) => {
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id ? { ...item, read: true } : item
-      )
-    );
-  }, []);
-
-  const markAllAsRead = useCallback(() => {
-    setItems((prevItems) =>
-      prevItems.map((item) => (item.read ? item : { ...item, read: true }))
-    );
-  }, []);
-
+  /**
+   * Recarga los datos desde la API o mock.
+   */
   const reload = useCallback(async () => {
-    setStatus('loading');
+    if (isMock) {
+      setError(null);
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        setItems([...INITIAL_MOCK_NOTIFICATIONS]);
+        setStatus('success');
+      } catch (err) {
+        setError(err?.message || 'Error al recargar notificaciones simuladas');
+        setStatus('error');
+      }
+      return;
+    }
+
     setError(null);
     try {
-      // Simulación de carga asíncrona; en Fase B se conectará con notificationsApi.list()
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      setItems([...INITIAL_MOCK_NOTIFICATIONS]);
+      const response = await notificationsApi.list({ page: 1, pageSize: 50 });
+      const loaded = response?.data || response?.items || (Array.isArray(response) ? response : []);
+
+      const sorted = [...loaded].sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
+      setItems(sorted);
       setStatus('success');
     } catch (err) {
-      setError(err?.message || 'Error al recargar notificaciones');
+      console.error('[Notifications] Error al cargar notificaciones:', err);
+      setError(err?.message || 'No se pudieron cargar las notificaciones');
       setStatus('error');
     }
-  }, []);
+  }, [isMock]);
+
+  // Conexión de tiempo real cuando la fuente es 'api'
+  useEffect(() => {
+    if (isMock) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function fetchInitial() {
+      try {
+        const response = await notificationsApi.list({ page: 1, pageSize: 50 });
+        if (!isMounted) return;
+        const loaded = response?.data || response?.items || (Array.isArray(response) ? response : []);
+        const sorted = [...loaded].sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
+        setItems(sorted);
+        setStatus('success');
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('[Notifications] Error al cargar notificaciones:', err);
+        setError(err?.message || 'No se pudieron cargar las notificaciones');
+        setStatus('error');
+      }
+    }
+
+    fetchInitial();
+
+    const client = connectRealtime({
+      getUrl: () => notificationsApi.getRealtimeToken(),
+      onMessage: (message) => {
+        if (!isMounted) return;
+        if (message && message.data) {
+          const newNotification = message.data;
+          setLastIncomingNotification(newNotification);
+
+          setItems((prev) => {
+            if (prev.some((item) => item.id === newNotification.id)) {
+              return prev;
+            }
+            const updated = [newNotification, ...prev];
+            updated.sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
+            return updated;
+          });
+        }
+      },
+      onStatus: (newStatus) => {
+        if (!isMounted) return;
+        setConnectionStatus(newStatus);
+        if (newStatus === 'live') {
+          reload();
+        }
+      },
+    });
+
+    return () => {
+      isMounted = false;
+      client.close();
+    };
+  }, [isMock, reload]);
+
+  /**
+   * Marca una notificación como leída con actualización optimista.
+   */
+  const markAsRead = useCallback(async (id) => {
+    const previousItems = itemsRef.current;
+
+    setItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, read: true } : item))
+    );
+
+    if (isMock) return;
+
+    try {
+      await notificationsApi.markAsRead(id);
+    } catch (err) {
+      console.error(`[Notifications] Error al marcar leída #${id}:`, err);
+      setItems(previousItems);
+      setError('No se pudo actualizar el estado de la notificación');
+    }
+  }, [isMock]);
+
+  /**
+   * Marca todas las notificaciones como leídas con actualización optimista.
+   */
+  const markAllAsRead = useCallback(async () => {
+    const previousItems = itemsRef.current;
+
+    setItems((prev) =>
+      prev.map((item) => (item.read ? item : { ...item, read: true }))
+    );
+
+    if (isMock) return;
+
+    try {
+      await notificationsApi.markAllAsRead();
+    } catch (err) {
+      console.error('[Notifications] Error al marcar todas como leídas:', err);
+      setItems(previousItems);
+      setError('No se pudieron marcar todas las notificaciones');
+    }
+  }, [isMock]);
 
   return {
     items,
     unreadCount,
     status,
     error,
+    connectionStatus,
+    lastIncomingNotification,
     markAsRead,
     markAllAsRead,
     reload,

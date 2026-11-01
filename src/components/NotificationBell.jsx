@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../notifications/useNotifications';
 import { formatRelative } from '../utils/date';
@@ -7,17 +7,21 @@ import './NotificationBell.css';
 
 /**
  * Componente de Campana de Notificaciones accesible y responsivo.
- * Conectado con useNotifications() y utilidades Epoch en src/utils/date.js.
- *
- * Casos de prueba cubiertos:
- * 1. Badge numérico: Oculto cuando unreadCount === 0; muestra el número exacto (1..9) o "9+" si > 9.
- * 2. Apertura/Cierre del popover: Toggle con clic en la campana; cierre con clic exterior; cierre con tecla Escape devolviendo el foco al disparador.
- * 3. Marcar una como leída: Clic en notificación marca el elemento como leído, decrementa el badge y redirige a la vista del grupo asociado.
- * 4. Marcar todas como leídas: Clic en el botón superior marca todos los elementos como leídos y desactiva el botón.
- * 5. Accesibilidad: Disparador con aria-label dinámico, aria-haspopup="dialog" y aria-expanded según el estado.
+ * Conectado con useNotifications() y WebSocket de Azure Web PubSub en tiempo real.
  */
 export function NotificationBell() {
-  const { items, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const {
+    items,
+    unreadCount,
+    status,
+    error,
+    connectionStatus,
+    lastIncomingNotification,
+    markAsRead,
+    markAllAsRead,
+    reload,
+  } = useNotifications();
+
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
   const triggerRef = useRef(null);
@@ -69,8 +73,50 @@ export function NotificationBell() {
 
   const badgeDisplay = unreadCount > 9 ? '9+' : unreadCount > 0 ? unreadCount : null;
 
+  // Renderizado del indicador de conexión
+  const renderConnectionBadge = () => {
+    switch (connectionStatus) {
+      case 'live':
+        return (
+          <span className="notification-conn-status live" title="Conexión en vivo activa">
+            <span className="notification-status-dot live" aria-hidden="true" />
+            <span>En vivo</span>
+          </span>
+        );
+      case 'reconnecting':
+        return (
+          <span className="notification-conn-status reconnecting" title="Reconectando con el servidor...">
+            <span className="notification-status-dot reconnecting" aria-hidden="true" />
+            <span>Reconectando...</span>
+          </span>
+        );
+      case 'connecting':
+        return (
+          <span className="notification-conn-status connecting" title="Estableciendo conexión...">
+            <span className="notification-status-dot connecting" aria-hidden="true" />
+            <span>Conectando...</span>
+          </span>
+        );
+      case 'offline':
+      default:
+        return (
+          <span className="notification-conn-status offline" title="Sin conexión de tiempo real">
+            <span className="notification-status-dot offline" aria-hidden="true" />
+            <span>Sin conexión</span>
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="notification-bell-container" ref={containerRef}>
+      {/* Región accesible invisible para anuncios a lectores de pantalla */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {lastIncomingNotification
+          ? `Nueva notificación: ${lastIncomingNotification.title}. ${lastIncomingNotification.message}`
+          : ''}
+      </div>
+
       <button
         ref={triggerRef}
         type="button"
@@ -108,18 +154,39 @@ export function NotificationBell() {
                 </span>
               )}
             </div>
-            <button
-              type="button"
-              className="notification-mark-all-btn"
-              onClick={markAllAsRead}
-              disabled={unreadCount === 0}
-            >
-              Marcar todas como leídas
-            </button>
+
+            <div className="notification-header-actions">
+              {renderConnectionBadge()}
+              <button
+                type="button"
+                className="notification-mark-all-btn"
+                onClick={markAllAsRead}
+                disabled={unreadCount === 0}
+              >
+                Marcar leídas
+              </button>
+            </div>
           </div>
 
           <ul className="notification-popover-list">
-            {items.length === 0 ? (
+            {status === 'loading' && items.length === 0 ? (
+              <li className="notification-empty-state">
+                <span className="notification-spinner" aria-hidden="true" />
+                <span>Cargando notificaciones...</span>
+              </li>
+            ) : status === 'error' && items.length === 0 ? (
+              <li className="notification-empty-state error">
+                <Icons.AlertTriangle />
+                <span>{error || 'Error al cargar notificaciones'}</span>
+                <button
+                  type="button"
+                  className="notification-retry-btn"
+                  onClick={reload}
+                >
+                  Reintentar
+                </button>
+              </li>
+            ) : items.length === 0 ? (
               <li className="notification-empty-state">
                 <Icons.Bell />
                 <span>No tienes notificaciones</span>

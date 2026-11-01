@@ -1,21 +1,79 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api } from '../lib/apiClient';
-import { calendarApi } from '../api';
+import { calendarApi, coursesApi } from '../api';
 import { fromEpochMs, formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Groups.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { items, totalRecords } = usePaginatedList('/groups', { pageSize: 5 });
+  const { items, totalRecords, status } = usePaginatedList('/groups', { pageSize: 5 });
 
   // Eventos e inconvenientes dinámicos desde APIM
   const [eventsList, setEventsList] = useState([]);
   const [issuesList, setIssuesList] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState('');
+  const [coursesStatus, setCoursesStatus] = useState('loading');
+  const [coursesError, setCoursesError] = useState(null);
+  const [isCourseMenuOpen, setIsCourseMenuOpen] = useState(false);
+  const courseSelectorRef = useRef(null);
+  const courseSelectorButtonRef = useRef(null);
 
   useEffect(() => {
+    let isMounted = true;
+
+    coursesApi.list()
+      .then((response) => {
+        const courseList = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.content)
+          ? response.content
+          : Array.isArray(response?.items)
+          ? response.items
+          : null;
+
+        if (!courseList) {
+          throw new Error('La respuesta de /courses no contiene una lista de cursos.');
+        }
+
+        const validCourses = courseList.filter(
+          (course) =>
+            course &&
+            course.id !== undefined &&
+            course.id !== null &&
+            typeof course.name === 'string' &&
+            course.name.trim() !== '',
+        );
+
+        if (validCourses.length !== courseList.length) {
+          throw new Error('La respuesta de /courses contiene cursos sin identificador o nombre.');
+        }
+
+        if (isMounted) {
+          setCourses(validCourses);
+          setSelectedCourseId((currentId) =>
+            validCourses.some((course) => String(course.id) === currentId)
+              ? currentId
+              : String(validCourses[0]?.id ?? ''),
+          );
+          setCoursesStatus('success');
+        }
+      })
+      .catch((err) => {
+        console.error('Error al cargar cursos desde APIM:', err);
+        if (isMounted) {
+          setCoursesError(
+            err instanceof Error
+              ? `No se pudieron cargar los cursos desde APIM: ${err.message}`
+              : 'No se pudieron cargar los cursos desde APIM.',
+          );
+          setCoursesStatus('error');
+        }
+      });
+
     calendarApi.listEvents()
       .then((res) => setEventsList(Array.isArray(res?.content) ? res.content : Array.isArray(res?.items) ? res.items : []))
       .catch((err) => console.warn('Error al cargar eventos en Dashboard:', err));
@@ -23,7 +81,35 @@ export default function Dashboard() {
     api.get('/groups/1/issues')
       .then((res) => setIssuesList(res.items || []))
       .catch((err) => console.warn('Error al cargar issues en Dashboard:', err));
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!isCourseMenuOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!courseSelectorRef.current?.contains(event.target)) {
+        setIsCourseMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsCourseMenuOpen(false);
+        courseSelectorButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isCourseMenuOpen]);
 
   const formatRepoSlug = (url, fallbackName) => {
     if (!url) return `revisatec/${fallbackName.toLowerCase().replace(/\s+/g, '-')}`;
@@ -40,10 +126,60 @@ export default function Dashboard() {
         </div>
 
         <div className="course-header-right">
-          <button type="button" className="course-selector-btn">
-            <span>Curso: Diseño de Software</span>
-            <Icons.ChevronDown />
-          </button>
+          <div className="course-selector-control" ref={courseSelectorRef}>
+            <button
+              ref={courseSelectorButtonRef}
+              type="button"
+              className={`course-selector-btn ${isCourseMenuOpen ? 'is-open' : ''}`}
+              onClick={() => setIsCourseMenuOpen((isOpen) => !isOpen)}
+              disabled={coursesStatus !== 'success' || courses.length === 0}
+              aria-label="Seleccionar curso"
+              aria-haspopup="listbox"
+              aria-expanded={isCourseMenuOpen}
+              aria-controls={isCourseMenuOpen ? 'dashboard-course-options' : undefined}
+              aria-describedby={coursesError ? 'dashboard-courses-error' : undefined}
+            >
+              <span className="course-selector-label">
+                {courses.length === 0
+                  ? coursesStatus === 'loading'
+                    ? 'Cargando cursos...'
+                    : coursesStatus === 'error'
+                    ? 'No se pudieron cargar los cursos'
+                    : 'No hay cursos disponibles'
+                  : `Curso: ${courses.find((course) => String(course.id) === selectedCourseId)?.name || 'Seleccionar curso'}`}
+              </span>
+              <Icons.ChevronDown />
+            </button>
+            {isCourseMenuOpen && (
+              <div
+                id="dashboard-course-options"
+                className="course-selector-menu"
+                role="listbox"
+                aria-label="Cursos disponibles"
+              >
+                {courses.map((course) => (
+                  <button
+                    key={course.id}
+                    type="button"
+                    className="course-selector-option"
+                    role="option"
+                    aria-selected={String(course.id) === selectedCourseId}
+                    onClick={() => {
+                      setSelectedCourseId(String(course.id));
+                      setIsCourseMenuOpen(false);
+                    }}
+                  >
+                    {course.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {coursesError && (
+              <span id="dashboard-courses-error" className="course-selector-error" role="alert">
+                {coursesError}
+              </span>
+            )}
+          </div>
           <button
             type="button"
             onClick={() => navigate('/groups')}

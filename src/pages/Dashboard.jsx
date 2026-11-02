@@ -2,28 +2,82 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api } from '../lib/apiClient';
-import { calendarApi } from '../api';
+import { calendarApi, groupsApi } from '../api';
+import { useCourse } from '../context/CourseContext';
+import CourseSelector from '../components/CourseSelector';
 import { fromEpochMs, formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Groups.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { items, totalRecords } = usePaginatedList('/groups', { pageSize: 5 });
+  const { selectedCourseId } = useCourse();
+  const { items, totalRecords, status, error } = usePaginatedList('/groups', {
+    pageSize: 5,
+    courseId: selectedCourseId,
+  });
 
   // Eventos e inconvenientes dinámicos desde APIM
-  const [eventsList, setEventsList] = useState([]);
-  const [issuesList, setIssuesList] = useState([]);
+  const [eventsState, setEventsState] = useState({ courseId: null, items: [] });
+  const [issuesState, setIssuesState] = useState({ courseId: null, items: [] });
+  const [courseGroupsState, setCourseGroupsState] = useState({ courseId: null, items: [] });
+  const eventsList = Object.is(eventsState.courseId, selectedCourseId) ? eventsState.items : [];
+  const issuesList = Object.is(issuesState.courseId, selectedCourseId) ? issuesState.items : [];
+  const courseGroups = Object.is(courseGroupsState.courseId, selectedCourseId)
+    ? courseGroupsState.items
+    : [];
+  const averageProgress = courseGroups.length
+    ? Math.round(courseGroups.reduce((total, group) => {
+      const progress = Number(group.avance ?? group.progress ?? 0);
+      return total + (Number.isFinite(progress) ? progress : 0);
+    }, 0) / courseGroups.length)
+    : null;
 
   useEffect(() => {
-    calendarApi.listEvents()
-      .then((res) => setEventsList(Array.isArray(res?.content) ? res.content : Array.isArray(res?.items) ? res.items : []))
-      .catch((err) => console.warn('Error al cargar eventos en Dashboard:', err));
+    let active = true;
 
-    api.get('/groups/1/issues')
-      .then((res) => setIssuesList(res.items || []))
-      .catch((err) => console.warn('Error al cargar issues en Dashboard:', err));
-  }, []);
+    calendarApi.listEvents({ courseId: selectedCourseId })
+      .then((res) => {
+        if (active) {
+          setEventsState({
+            courseId: selectedCourseId,
+            items: Array.isArray(res?.content) ? res.content : Array.isArray(res?.items) ? res.items : [],
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('Error al cargar eventos en Dashboard:', err);
+        if (active) setEventsState({ courseId: selectedCourseId, items: [] });
+      });
+
+    async function loadCourseIssues() {
+      try {
+        const groupsResponse = await groupsApi.list({
+          page: 1,
+          pageSize: 100,
+          courseId: selectedCourseId,
+        });
+        const courseGroups = Array.isArray(groupsResponse?.content)
+          ? groupsResponse.content
+          : Array.isArray(groupsResponse?.items) ? groupsResponse.items : [];
+        if (active) setCourseGroupsState({ courseId: selectedCourseId, items: courseGroups });
+        const issueLists = await Promise.all(courseGroups.map(async (group) => {
+          const response = await api.get(`/groups/${group.id}/issues`);
+          return (response?.items || []).map((issue) => ({
+            ...issue,
+            groupName: issue.groupName || group.name,
+          }));
+        }));
+        if (active) setIssuesState({ courseId: selectedCourseId, items: issueLists.flat() });
+      } catch (err) {
+        console.warn('Error al cargar issues en Dashboard:', err);
+        if (active) setIssuesState({ courseId: selectedCourseId, items: [] });
+      }
+    }
+
+    loadCourseIssues();
+    return () => { active = false; };
+  }, [selectedCourseId]);
 
   const formatRepoSlug = (url, fallbackName) => {
     if (!url) return `revisatec/${fallbackName.toLowerCase().replace(/\s+/g, '-')}`;
@@ -36,14 +90,11 @@ export default function Dashboard() {
       <div className="course-header">
         <div className="course-header-left">
           <h1 className="course-title">Resumen del curso</h1>
-          <span className="course-meta">Actualizado hace 5 min · Semestre II 2026</span>
+          <span className="course-meta">Resumen de grupos, entregas e inconvenientes</span>
         </div>
 
         <div className="course-header-right">
-          <button type="button" className="course-selector-btn">
-            <span>Curso: Diseño de Software</span>
-            <Icons.ChevronDown />
-          </button>
+          <CourseSelector />
           <button
             type="button"
             onClick={() => navigate('/groups')}
@@ -64,7 +115,7 @@ export default function Dashboard() {
             </div>
             <span className="summary-card-title">Grupos activos</span>
           </div>
-          <div className="summary-card-number">{totalRecords || items.length || 3}</div>
+          <div className="summary-card-number">{totalRecords ?? items.length}</div>
           <div className="summary-card-footer">Ver listado completo →</div>
         </div>
 
@@ -75,8 +126,10 @@ export default function Dashboard() {
             </div>
             <span className="summary-card-title">Próximas entregas</span>
           </div>
-          <div className="summary-card-number">{eventsList.length || 5}</div>
-          <div className="summary-card-footer">Próxima: vie 2 oct</div>
+          <div className="summary-card-number">{eventsList.length}</div>
+          <div className="summary-card-footer">
+            {eventsList[0] ? `Próxima: ${formatDate(eventsList[0].date)}` : 'Sin próximas entregas'}
+          </div>
         </div>
 
         <div className="summary-card" onClick={() => navigate('/issues')} style={{ cursor: 'pointer' }}>
@@ -86,8 +139,10 @@ export default function Dashboard() {
             </div>
             <span className="summary-card-title">Inconvenientes</span>
           </div>
-          <div className="summary-card-number">{issuesList.length || 3}</div>
-          <div className="summary-card-footer">Sin resolver</div>
+          <div className="summary-card-number">{issuesList.length}</div>
+          <div className="summary-card-footer">
+            {issuesList.filter((issue) => issue.status === 'Sin resolver').length} sin resolver
+          </div>
         </div>
 
         <div className="summary-card">
@@ -97,7 +152,9 @@ export default function Dashboard() {
             </div>
             <span className="summary-card-title">Avance general</span>
           </div>
-          <div className="summary-card-number">71%</div>
+          <div className="summary-card-number">
+            {averageProgress === null ? '—' : `${averageProgress}%`}
+          </div>
           <div className="summary-card-footer">Promedio de rúbrica</div>
         </div>
       </div>
@@ -151,6 +208,12 @@ export default function Dashboard() {
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '36px' }}>
                       Cargando datos desde Azure APIM...
+                    </td>
+                  </tr>
+                ) : status === 'error' ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '36px' }}>
+                      {error || 'No se pudieron cargar los grupos.'}
                     </td>
                   </tr>
                 ) : items.length === 0 ? (

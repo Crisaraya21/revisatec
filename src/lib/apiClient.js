@@ -46,11 +46,12 @@ async function request(path, options = {}) {
   return body;
 }
 
-export function buildQuery({ page, pageSize, search } = {}) {
+export function buildQuery({ page, pageSize, search, courseId } = {}) {
   const params = new URLSearchParams();
   if (page !== undefined && page !== null) params.set('page', String(page));
   if (pageSize !== undefined && pageSize !== null) params.set('pageSize', String(pageSize));
   if (search !== undefined && search !== null && search.trim() !== '') params.set('search', search.trim());
+  if (courseId !== undefined && courseId !== null) params.set('courseId', String(courseId));
   const queryString = params.toString();
   return queryString ? `?${queryString}` : '';
 }

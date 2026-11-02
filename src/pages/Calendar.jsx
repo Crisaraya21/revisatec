@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { api, ApiError } from '../lib/apiClient';
 import { calendarApi } from '../api';
+import { useCourse } from '../context/CourseContext';
 import { fromEpochMs, toEpochMs, formatDate, toInputValue } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Calendar.css';
@@ -37,10 +38,18 @@ function CalendarEventRow({ event }) {
 }
 
 export default function Calendar() {
+  const { selectedCourseId } = useCourse();
   // Lista de eventos cargados en vivo desde Azure APIM
   const [eventsList, setEventsList] = useState([]);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState(() => ({ courseId: selectedCourseId, page: 1 }));
+  const page = Object.is(pagination.courseId, selectedCourseId) ? pagination.page : 1;
+  const setPage = (nextPage) => {
+    setPagination({
+      courseId: selectedCourseId,
+      page: typeof nextPage === 'function' ? nextPage(page) : nextPage,
+    });
+  };
   const pageSize = 5;
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -113,12 +122,16 @@ export default function Calendar() {
     let list = (eventsList || []).filter((e) => !deletedEventIds.includes(e.id));
     list = list.map((e) => (editedEvents[e.id] ? { ...e, ...editedEvents[e.id] } : e));
     createdEvents.forEach((ce) => {
-      if (!list.some((e) => e.id === ce.id) && !deletedEventIds.includes(ce.id)) {
+      if (
+        String(ce.courseId) === String(selectedCourseId) &&
+        !list.some((e) => e.id === ce.id) &&
+        !deletedEventIds.includes(ce.id)
+      ) {
         list = [ce, ...list];
       }
     });
     return list;
-  }, [eventsList, deletedEventIds, editedEvents, createdEvents]);
+  }, [eventsList, deletedEventIds, editedEvents, createdEvents, selectedCourseId]);
 
   // Restablecer datos originales del Mock en APIM
   const handleResetMockData = () => {
@@ -143,6 +156,7 @@ export default function Calendar() {
           page,
           pageSize,
           search,
+          courseId: selectedCourseId,
         });
         if (!isMounted) return;
         const rawItems = Array.isArray(res?.content)
@@ -176,7 +190,7 @@ export default function Calendar() {
     return () => {
       isMounted = false;
     };
-  }, [page, search, reloadKey]);
+  }, [page, search, reloadKey, selectedCourseId]);
 
   const handleManualRefresh = () => {
     setIsLoading(true);
@@ -187,10 +201,10 @@ export default function Calendar() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
-      setPage(1);
+      setPagination({ courseId: selectedCourseId, page: 1 });
     }, 350);
     return () => clearTimeout(timer);
-  }, [searchInput]);
+  }, [searchInput, selectedCourseId]);
 
   // ----------------------------------------------------
   // OPERACIONES CRUD CON ESTADOS HTTP
@@ -199,6 +213,10 @@ export default function Calendar() {
   // 1. CREAR EVENTO (POST /calendar/events -> HTTP 201 Created)
   const handleCreateEvent = async (e) => {
     e.preventDefault();
+    if (selectedCourseId === null) {
+      setFormError('Selecciona un curso antes de crear un evento.');
+      return;
+    }
     if (!newTitle.trim()) {
       setFormError('El título del hito es obligatorio.');
       return;
@@ -214,6 +232,7 @@ export default function Calendar() {
         date: epochDate,
         type: newType,
         audience: newAudience,
+        courseId: selectedCourseId,
       });
       const newEventObj = {
         id: res?.id || Date.now(),
@@ -221,6 +240,7 @@ export default function Calendar() {
         date: epochDate,
         type: newType,
         audience: newAudience,
+        courseId: selectedCourseId,
       };
       const updatedCreated = [newEventObj, ...createdEvents];
       setCreatedEvents(updatedCreated);
@@ -270,6 +290,7 @@ export default function Calendar() {
         title: editTitle.trim(),
         date: epochDate,
         audience: editAudience,
+        courseId: editingEvent.courseId ?? selectedCourseId,
       });
 
       const updatedTitle = res?.title || editTitle;
@@ -278,6 +299,7 @@ export default function Calendar() {
         title: updatedTitle,
         date: epochDate,
         audience: editAudience,
+        courseId: editingEvent.courseId ?? selectedCourseId,
       };
       const updatedEdited = { ...editedEvents, [editingEvent.id]: updatedItem };
       setEditedEvents(updatedEdited);
@@ -492,6 +514,7 @@ export default function Calendar() {
               setFormError(null);
               setIsCreateModalOpen(true);
             }}
+            disabled={selectedCourseId === null}
             className="btn-new-event"
           >
             <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span>
@@ -935,7 +958,7 @@ export default function Calendar() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || selectedCourseId === null}
                   className="btn-primary-action"
                 >
                   {isSubmitting ? 'Creando en APIM...' : 'Crear Hito (HTTP 201)'}

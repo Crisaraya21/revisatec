@@ -6,9 +6,10 @@ const STORAGE_KEY = 'revisatec_selected_course_id';
 let coursesRequest;
 
 function getCourseList(response) {
+  if (Array.isArray(response)) return response;
   if (Array.isArray(response?.content)) return response.content;
   if (Array.isArray(response?.items)) return response.items;
-  return Array.isArray(response) ? response : [];
+  return null;
 }
 
 function readSavedCourseId() {
@@ -34,17 +35,32 @@ export function CourseProvider({ children }) {
       .then((response) => {
         if (!active) return;
         const courseList = getCourseList(response);
-        setCourses(courseList);
+        if (!courseList) {
+          throw new Error('La respuesta de /courses no contiene una lista de cursos.');
+        }
+        const validCourses = courseList.filter((course) => (
+          course &&
+          course.id !== undefined &&
+          course.id !== null &&
+          typeof course.name === 'string' &&
+          course.name.trim() !== ''
+        ));
+        if (validCourses.length !== courseList.length) {
+          throw new Error('La respuesta de /courses contiene cursos sin identificador o nombre.');
+        }
+        setCourses(validCourses);
         setSelectedCourseId((currentId) => (
-          courseList.some((course) => String(course.id) === String(currentId))
+          validCourses.some((course) => String(course.id) === String(currentId))
             ? currentId
-            : courseList[0]?.id ?? null
+            : validCourses[0]?.id ?? null
         ));
       })
       .catch((requestError) => {
         if (!active) return;
         console.error('Error al cargar cursos desde APIM:', requestError);
-        setError('No se pudieron cargar los cursos desde APIM.');
+        setError(requestError instanceof Error
+          ? `No se pudieron cargar los cursos desde APIM: ${requestError.message}`
+          : 'No se pudieron cargar los cursos desde APIM.');
         coursesRequest = null;
       })
       .finally(() => {

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { api, ApiError } from '../lib/apiClient';
+import { useCourse } from '../context/CourseContext';
 import { Icons } from '../components/Icons';
 import './StudentDashboard.css';
 
 export default function StudentGroup() {
+  const { selectedCourse } = useCourse();
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
   const [issues, setIssues] = useState([]);
@@ -38,7 +40,7 @@ export default function StudentGroup() {
           id: 2,
           name: res.name || null,
           repoUrl: res.repoUrl || '',
-          course: res.course || 'Diseño de Software',
+          course: res.course || null,
           avance: res.avance ?? 71,
         });
         setRepoInput(res.repoUrl || '');
@@ -165,7 +167,7 @@ export default function StudentGroup() {
                 : 'Grupo no disponible desde APIM'}
           </h1>
           <span className="student-group-subtitle">
-            {group?.repoUrl ? group.repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '') : ''} &middot; {group?.course || 'Diseño de Software'}
+            {group?.repoUrl ? group.repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '') : ''} &middot; {group?.course || selectedCourse?.name || 'Curso no disponible'}
           </span>
         </div>
 

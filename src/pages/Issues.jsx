@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '../lib/apiClient';
+import { groupsApi } from '../api';
+import { useCourse } from '../context/CourseContext';
 import { formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Issues.css';
 
 export default function Issues() {
+  const { selectedCourseId } = useCourse();
   const [issues, setIssues] = useState([]);
   const [groups, setGroups] = useState([]);
 
@@ -15,47 +18,56 @@ export default function Issues() {
   const [isLoading, setIsLoading] = useState(false);
   const [bannerClosed, setBannerClosed] = useState(false);
   const [apiError, setApiError] = useState(null);
+  const requestIdRef = useRef(0);
 
   // Carga los grupos y consulta los inconvenientes de cada uno.
-  const fetchIssuesFromApi = async () => {
+  const fetchIssuesFromApi = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
     setApiError(null);
+    setIssues([]);
+    setGroups([]);
     try {
-      const [groupsRes, issuesRes] = await Promise.all([
-        api.get('/groups?page=1&pageSize=100&search='),
-        api.get('/groups/1/issues'),
-      ]);
-      const groupList = Array.isArray(groupsRes?.items) ? groupsRes.items : [];
-      setGroups(groupList);
-
-      const apiIssues = (Array.isArray(issuesRes?.items) ? issuesRes.items : []).map((item, index) => {
-        const group = groupList.find((entry) => String(entry.id) === String(item.groupId));
-        const groupId = item.groupId ?? group?.id;
-        return {
-          id: `${groupId ?? 'group'}:${item.id || 'issue'}:${index}`,
-          type: item.type || 'Tipo no disponible desde APIM',
-          description: item.description || item.type || 'Descripción no disponible desde APIM',
-          group: item.groupName || group?.name || 'Grupo no disponible desde APIM',
-          groupId,
-          detected: item.date || null,
-          status: item.status || null,
-          iconType: item.type?.toLowerCase().includes('commit') ? 'commit' : 'file',
-        };
+      const groupsRes = await groupsApi.list({
+        page: 1,
+        pageSize: 100,
+        courseId: selectedCourseId,
       });
-
-      setIssues(apiIssues);
+      const groupList = Array.isArray(groupsRes?.content)
+        ? groupsRes.content
+        : Array.isArray(groupsRes?.items) ? groupsRes.items : [];
+      const issueLists = await Promise.all(groupList.map(async (group) => {
+        const response = await api.get(`/groups/${group.id}/issues`);
+        return (Array.isArray(response?.items) ? response.items : []).map((item, index) => {
+          const groupId = item.groupId ?? group.id;
+          return {
+            id: `${groupId}:${item.id || 'issue'}:${index}`,
+            type: item.type || 'Tipo no disponible desde APIM',
+            description: item.description || item.type || 'Descripción no disponible desde APIM',
+            group: item.groupName || group.name || 'Grupo no disponible desde APIM',
+            groupId,
+            detected: item.date || null,
+            status: item.status || null,
+            iconType: item.type?.toLowerCase().includes('commit') ? 'commit' : 'file',
+          };
+        });
+      }));
+      if (requestId !== requestIdRef.current) return;
+      setGroups(groupList);
+      setIssues(issueLists.flat());
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       console.error('Error al conectar con Azure APIM:', err);
       setApiError('Error de conexion con Azure APIM (/groups/{id}/issues): El servidor no responde o la conexion fue interrumpida.');
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
-  };
+  }, [selectedCourseId]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchIssuesFromApi();
-  }, []);
+  }, [fetchIssuesFromApi]);
 
   const handleToggleStatus = (id) => {
     setIssues((prev) =>

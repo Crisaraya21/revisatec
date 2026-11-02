@@ -1,115 +1,83 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api } from '../lib/apiClient';
-import { calendarApi, coursesApi } from '../api';
+import { calendarApi, groupsApi } from '../api';
+import { useCourse } from '../context/CourseContext';
+import CourseSelector from '../components/CourseSelector';
 import { fromEpochMs, formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Groups.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { items, totalRecords, status } = usePaginatedList('/groups', { pageSize: 5 });
+  const { selectedCourseId } = useCourse();
+  const { items, totalRecords, status, error } = usePaginatedList('/groups', {
+    pageSize: 5,
+    courseId: selectedCourseId,
+  });
 
   // Eventos e inconvenientes dinámicos desde APIM
-  const [eventsList, setEventsList] = useState([]);
-  const [issuesList, setIssuesList] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [selectedCourseId, setSelectedCourseId] = useState('');
-  const [coursesStatus, setCoursesStatus] = useState('loading');
-  const [coursesError, setCoursesError] = useState(null);
-  const [isCourseMenuOpen, setIsCourseMenuOpen] = useState(false);
-  const courseSelectorRef = useRef(null);
-  const courseSelectorButtonRef = useRef(null);
+  const [eventsState, setEventsState] = useState({ courseId: null, items: [] });
+  const [issuesState, setIssuesState] = useState({ courseId: null, items: [] });
+  const [courseGroupsState, setCourseGroupsState] = useState({ courseId: null, items: [] });
+  const eventsList = Object.is(eventsState.courseId, selectedCourseId) ? eventsState.items : [];
+  const issuesList = Object.is(issuesState.courseId, selectedCourseId) ? issuesState.items : [];
+  const courseGroups = Object.is(courseGroupsState.courseId, selectedCourseId)
+    ? courseGroupsState.items
+    : [];
+  const averageProgress = courseGroups.length
+    ? Math.round(courseGroups.reduce((total, group) => {
+      const progress = Number(group.avance ?? group.progress ?? 0);
+      return total + (Number.isFinite(progress) ? progress : 0);
+    }, 0) / courseGroups.length)
+    : null;
 
   useEffect(() => {
-    let isMounted = true;
+    let active = true;
 
-    coursesApi.list()
-      .then((response) => {
-        const courseList = Array.isArray(response)
-          ? response
-          : Array.isArray(response?.content)
-          ? response.content
-          : Array.isArray(response?.items)
-          ? response.items
-          : null;
-
-        if (!courseList) {
-          throw new Error('La respuesta de /courses no contiene una lista de cursos.');
-        }
-
-        const validCourses = courseList.filter(
-          (course) =>
-            course &&
-            course.id !== undefined &&
-            course.id !== null &&
-            typeof course.name === 'string' &&
-            course.name.trim() !== '',
-        );
-
-        if (validCourses.length !== courseList.length) {
-          throw new Error('La respuesta de /courses contiene cursos sin identificador o nombre.');
-        }
-
-        if (isMounted) {
-          setCourses(validCourses);
-          setSelectedCourseId((currentId) =>
-            validCourses.some((course) => String(course.id) === currentId)
-              ? currentId
-              : String(validCourses[0]?.id ?? ''),
-          );
-          setCoursesStatus('success');
+    calendarApi.listEvents({ courseId: selectedCourseId })
+      .then((res) => {
+        if (active) {
+          setEventsState({
+            courseId: selectedCourseId,
+            items: Array.isArray(res?.content) ? res.content : Array.isArray(res?.items) ? res.items : [],
+          });
         }
       })
       .catch((err) => {
-        console.error('Error al cargar cursos desde APIM:', err);
-        if (isMounted) {
-          setCoursesError(
-            err instanceof Error
-              ? `No se pudieron cargar los cursos desde APIM: ${err.message}`
-              : 'No se pudieron cargar los cursos desde APIM.',
-          );
-          setCoursesStatus('error');
-        }
+        console.warn('Error al cargar eventos en Dashboard:', err);
+        if (active) setEventsState({ courseId: selectedCourseId, items: [] });
       });
 
-    calendarApi.listEvents()
-      .then((res) => setEventsList(Array.isArray(res?.content) ? res.content : Array.isArray(res?.items) ? res.items : []))
-      .catch((err) => console.warn('Error al cargar eventos en Dashboard:', err));
-
-    api.get('/groups/1/issues')
-      .then((res) => setIssuesList(res.items || []))
-      .catch((err) => console.warn('Error al cargar issues en Dashboard:', err));
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isCourseMenuOpen) return undefined;
-
-    const handlePointerDown = (event) => {
-      if (!courseSelectorRef.current?.contains(event.target)) {
-        setIsCourseMenuOpen(false);
+    async function loadCourseIssues() {
+      try {
+        const groupsResponse = await groupsApi.list({
+          page: 1,
+          pageSize: 100,
+          courseId: selectedCourseId,
+        });
+        const courseGroups = Array.isArray(groupsResponse?.content)
+          ? groupsResponse.content
+          : Array.isArray(groupsResponse?.items) ? groupsResponse.items : [];
+        if (active) setCourseGroupsState({ courseId: selectedCourseId, items: courseGroups });
+        const issueLists = await Promise.all(courseGroups.map(async (group) => {
+          const response = await api.get(`/groups/${group.id}/issues`);
+          return (response?.items || []).map((issue) => ({
+            ...issue,
+            groupName: issue.groupName || group.name,
+          }));
+        }));
+        if (active) setIssuesState({ courseId: selectedCourseId, items: issueLists.flat() });
+      } catch (err) {
+        console.warn('Error al cargar issues en Dashboard:', err);
+        if (active) setIssuesState({ courseId: selectedCourseId, items: [] });
       }
-    };
-    const handleKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        setIsCourseMenuOpen(false);
-        courseSelectorButtonRef.current?.focus();
-      }
-    };
+    }
 
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isCourseMenuOpen]);
+    loadCourseIssues();
+    return () => { active = false; };
+  }, [selectedCourseId]);
 
   const formatRepoSlug = (url, fallbackName) => {
     if (!url) return `revisatec/${fallbackName.toLowerCase().replace(/\s+/g, '-')}`;
@@ -122,64 +90,11 @@ export default function Dashboard() {
       <div className="course-header">
         <div className="course-header-left">
           <h1 className="course-title">Resumen del curso</h1>
-          <span className="course-meta">Actualizado hace 5 min · Semestre II 2026</span>
+          <span className="course-meta">Resumen de grupos, entregas e inconvenientes</span>
         </div>
 
         <div className="course-header-right">
-          <div className="course-selector-control" ref={courseSelectorRef}>
-            <button
-              ref={courseSelectorButtonRef}
-              type="button"
-              className={`course-selector-btn ${isCourseMenuOpen ? 'is-open' : ''}`}
-              onClick={() => setIsCourseMenuOpen((isOpen) => !isOpen)}
-              disabled={coursesStatus !== 'success' || courses.length === 0}
-              aria-label="Seleccionar curso"
-              aria-haspopup="listbox"
-              aria-expanded={isCourseMenuOpen}
-              aria-controls={isCourseMenuOpen ? 'dashboard-course-options' : undefined}
-              aria-describedby={coursesError ? 'dashboard-courses-error' : undefined}
-            >
-              <span className="course-selector-label">
-                {courses.length === 0
-                  ? coursesStatus === 'loading'
-                    ? 'Cargando cursos...'
-                    : coursesStatus === 'error'
-                    ? 'No se pudieron cargar los cursos'
-                    : 'No hay cursos disponibles'
-                  : `Curso: ${courses.find((course) => String(course.id) === selectedCourseId)?.name || 'Seleccionar curso'}`}
-              </span>
-              <Icons.ChevronDown />
-            </button>
-            {isCourseMenuOpen && (
-              <div
-                id="dashboard-course-options"
-                className="course-selector-menu"
-                role="listbox"
-                aria-label="Cursos disponibles"
-              >
-                {courses.map((course) => (
-                  <button
-                    key={course.id}
-                    type="button"
-                    className="course-selector-option"
-                    role="option"
-                    aria-selected={String(course.id) === selectedCourseId}
-                    onClick={() => {
-                      setSelectedCourseId(String(course.id));
-                      setIsCourseMenuOpen(false);
-                    }}
-                  >
-                    {course.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            {coursesError && (
-              <span id="dashboard-courses-error" className="course-selector-error" role="alert">
-                {coursesError}
-              </span>
-            )}
-          </div>
+          <CourseSelector />
           <button
             type="button"
             onClick={() => navigate('/groups')}
@@ -200,7 +115,7 @@ export default function Dashboard() {
             </div>
             <span className="summary-card-title">Grupos activos</span>
           </div>
-          <div className="summary-card-number">{totalRecords || items.length || 3}</div>
+          <div className="summary-card-number">{totalRecords ?? items.length}</div>
           <div className="summary-card-footer">Ver listado completo →</div>
         </div>
 
@@ -211,8 +126,10 @@ export default function Dashboard() {
             </div>
             <span className="summary-card-title">Próximas entregas</span>
           </div>
-          <div className="summary-card-number">{eventsList.length || 5}</div>
-          <div className="summary-card-footer">Próxima: vie 2 oct</div>
+          <div className="summary-card-number">{eventsList.length}</div>
+          <div className="summary-card-footer">
+            {eventsList[0] ? `Próxima: ${formatDate(eventsList[0].date)}` : 'Sin próximas entregas'}
+          </div>
         </div>
 
         <div className="summary-card" onClick={() => navigate('/issues')} style={{ cursor: 'pointer' }}>
@@ -222,8 +139,10 @@ export default function Dashboard() {
             </div>
             <span className="summary-card-title">Inconvenientes</span>
           </div>
-          <div className="summary-card-number">{issuesList.length || 3}</div>
-          <div className="summary-card-footer">Sin resolver</div>
+          <div className="summary-card-number">{issuesList.length}</div>
+          <div className="summary-card-footer">
+            {issuesList.filter((issue) => issue.status === 'Sin resolver').length} sin resolver
+          </div>
         </div>
 
         <div className="summary-card">
@@ -233,7 +152,9 @@ export default function Dashboard() {
             </div>
             <span className="summary-card-title">Avance general</span>
           </div>
-          <div className="summary-card-number">71%</div>
+          <div className="summary-card-number">
+            {averageProgress === null ? '—' : `${averageProgress}%`}
+          </div>
           <div className="summary-card-footer">Promedio de rúbrica</div>
         </div>
       </div>
@@ -287,6 +208,12 @@ export default function Dashboard() {
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '36px' }}>
                       Cargando datos desde Azure APIM...
+                    </td>
+                  </tr>
+                ) : status === 'error' ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '36px' }}>
+                      {error || 'No se pudieron cargar los grupos.'}
                     </td>
                   </tr>
                 ) : items.length === 0 ? (

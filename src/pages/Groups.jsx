@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
 import { api, ApiError } from '../lib/apiClient';
 import { groupsApi } from '../api';
+import { useCourse } from '../context/CourseContext';
 import { Icons } from '../components/Icons';
 import './Groups.css';
 export default function Groups() {
   const navigate = useNavigate();
+  const { selectedCourseId } = useCourse();
   const {
     items,
     totalRecords,
@@ -18,7 +20,7 @@ export default function Groups() {
     setPage,
     setSearch,
     reload,
-  } = usePaginatedList('/groups', { pageSize: 5 });
+  } = usePaginatedList('/groups', { pageSize: 5, courseId: selectedCourseId });
 
   // Estados locales optimistas para persistir operaciones CRUD sobre el mock estático de APIM
   const [deletedGroupIds, setDeletedGroupIds] = useState(() => {
@@ -48,12 +50,16 @@ export default function Groups() {
     let list = (items || []).filter((g) => !deletedGroupIds.includes(g.id));
     list = list.map((g) => (editedGroups[g.id] ? { ...g, ...editedGroups[g.id] } : g));
     createdGroups.forEach((cg) => {
-      if (!list.some((g) => g.id === cg.id) && !deletedGroupIds.includes(cg.id)) {
+      if (
+        String(cg.courseId) === String(selectedCourseId) &&
+        !list.some((g) => g.id === cg.id) &&
+        !deletedGroupIds.includes(cg.id)
+      ) {
         list = [cg, ...list];
       }
     });
     return list;
-  }, [items, deletedGroupIds, editedGroups, createdGroups]);
+  }, [items, deletedGroupIds, editedGroups, createdGroups, selectedCourseId]);
 
   // Restablecer datos originales del Mock en APIM
   const handleResetMockData = () => {
@@ -129,6 +135,10 @@ export default function Groups() {
   // 1. CREAR GRUPO (POST /groups -> 201 Created)
   const handleCreateGroup = async (e) => {
     e.preventDefault();
+    if (selectedCourseId === null) {
+      setFormError('Selecciona un curso antes de crear un grupo.');
+      return;
+    }
     if (!newGroupName.trim()) {
       setFormError('El nombre del grupo es obligatorio.');
       return;
@@ -141,12 +151,14 @@ export default function Groups() {
       const res = await groupsApi.create({
         name: newGroupName.trim(),
         repoUrl: newGroupRepo.trim() || undefined,
+        courseId: selectedCourseId,
       });
 
       const newGroupObj = {
         id: res?.id || Date.now(),
         name: res?.name || newGroupName.trim(),
         repoUrl: newGroupRepo.trim() || undefined,
+        courseId: selectedCourseId,
         avance: 0,
         estado: 'En progreso',
       };
@@ -198,6 +210,7 @@ export default function Groups() {
       const res = await groupsApi.update(editingGroup.id, {
         name: editName.trim(),
         repoUrl: editRepo.trim() || undefined,
+        courseId: editingGroup.courseId ?? selectedCourseId,
       });
 
       const updatedName = res?.name || editName.trim();
@@ -205,6 +218,7 @@ export default function Groups() {
         ...editingGroup,
         name: updatedName,
         repoUrl: editRepo.trim() || undefined,
+        courseId: editingGroup.courseId ?? selectedCourseId,
       };
       const updatedEdited = { ...editedGroups, [editingGroup.id]: updatedObj };
       setEditedGroups(updatedEdited);
@@ -344,6 +358,7 @@ export default function Groups() {
               setFormError(null);
               setIsCreateModalOpen(true);
             }}
+            disabled={selectedCourseId === null}
             className="btn-primary-action"
           >
             <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span>

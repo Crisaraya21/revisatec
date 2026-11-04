@@ -1,20 +1,16 @@
-import { api, buildQuery, ApiError } from '../lib/apiClient';
+﻿import { api, buildQuery, ApiError } from '../lib/apiClient';
 
-const customBaseUrl = import.meta.env.VITE_NOTIFICATIONS_BASE_URL;
+// Si se define VITE_NOTIFICATIONS_BASE_URL, se conecta directamente a MS3 local
+// (sin pasar por APIM). Si no, todas las peticiones van por el apiClient central (APIM).
+const customBaseUrl = import.meta.env.VITE_NOTIFICATIONS_BASE_URL?.replace(/\/+$/, '') || '';
 
 /**
- * Función interna para despachar peticiones a MS3.
- * Si se define VITE_NOTIFICATIONS_BASE_URL (desarrollo local directo contra MS3),
- * se conecta a esa URL; de lo contrario, utiliza el cliente central con Azure APIM.
+ * Funcion interna para peticiones directas a MS3 (solo cuando customBaseUrl esta definido).
+ * En produccion y en desarrollo normal, se usa api.* del cliente central (APIM).
  */
-async function requestNotifications(path, options = {}) {
-  if (!customBaseUrl) {
-    return path.startsWith('/') ? path : `/${path}`;
-  }
-
-  const cleanBase = customBaseUrl.replace(/\/+$/, '');
+async function requestDirect(path, options = {}) {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  const url = `${cleanBase}${cleanPath}`;
+  const url = `${customBaseUrl}${cleanPath}`;
 
   const res = await fetch(url, {
     headers: {
@@ -36,51 +32,40 @@ async function requestNotifications(path, options = {}) {
 
 export const notificationsApi = {
   /**
-   * Obtiene la lista paginada de notificaciones.
-   * @param {{ page?: number, pageSize?: number, search?: string }} params
+   * Obtiene la lista paginada de notificaciones desde APIM (GET /notifications).
    */
   list: async (params = {}) => {
     const queryString = buildQuery(params);
     const path = `/notifications${queryString}`;
-
-    if (customBaseUrl) {
-      return requestNotifications(path, { method: 'GET' });
-    }
+    if (customBaseUrl) return requestDirect(path, { method: 'GET' });
     return api.get(path);
   },
 
   /**
-   * Marca una notificación individual como leída.
-   * @param {string} id
+   * Marca una notificacion individual como leida (PATCH /notifications/{id}/read).
    */
   markAsRead: async (id) => {
     const path = `/notifications/${id}/read`;
-    if (customBaseUrl) {
-      return requestNotifications(path, { method: 'PATCH' });
-    }
+    if (customBaseUrl) return requestDirect(path, { method: 'PATCH' });
     return api.patch(path);
   },
 
   /**
-   * Marca masivamente todas las notificaciones pendientes como leídas.
+   * Marca todas las notificaciones como leidas (PATCH /notifications/read-all).
    */
   markAllAsRead: async () => {
     const path = '/notifications/read-all';
-    if (customBaseUrl) {
-      return requestNotifications(path, { method: 'PATCH' });
-    }
+    if (customBaseUrl) return requestDirect(path, { method: 'PATCH' });
     return api.patch(path);
   },
 
   /**
-   * Obtiene la URL con token temporal de acceso para Azure Web PubSub.
-   * @returns {Promise<{ url: string, expiresAt: number }>}
+   * Obtiene la URL con token de Azure Web PubSub (GET /notifications/realtime-token).
+   * Usada por realtimeClient.js para abrir la conexion WebSocket.
    */
   getRealtimeToken: async () => {
     const path = '/notifications/realtime-token';
-    if (customBaseUrl) {
-      return requestNotifications(path, { method: 'GET' });
-    }
+    if (customBaseUrl) return requestDirect(path, { method: 'GET' });
     return api.get(path);
   },
 };

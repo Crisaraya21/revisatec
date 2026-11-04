@@ -68,6 +68,91 @@
   gap: 12px;
 }
 
+.course-selector-control {
+  position: relative;
+}
+
+.course-selector-control .course-selector-btn {
+  max-width: 320px;
+  padding-right: 36px;
+  font-family: inherit;
+  text-align: left;
+}
+
+.course-selector-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-selector-control .course-selector-btn > svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+.course-selector-control > .course-selector-btn.is-open > svg {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.course-selector-control .course-selector-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.course-selector-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 5px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  animation: fadeInUp 0.16s ease-out;
+}
+
+.course-selector-option {
+  display: block;
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.course-selector-option:hover,
+.course-selector-option:focus-visible {
+  outline: none;
+  background: var(--bg-sunken);
+}
+
+.course-selector-option[aria-selected='true'] {
+  background: var(--bg-sunken);
+  color: var(--action-primary);
+  font-weight: 600;
+}
+
+.course-selector-error {
+  display: block;
+  max-width: 320px;
+  margin-top: 6px;
+  color: #b91c1c;
+  font-size: 0.75rem;
+}
+
 .course-selector-btn {
   display: inline-flex;
   align-items: center;
@@ -82,6 +167,91 @@
   color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.course-selector-control {
+  position: relative;
+}
+
+.course-selector-control .course-selector-btn {
+  max-width: 320px;
+  padding-right: 36px;
+  font-family: inherit;
+  text-align: left;
+}
+
+.course-selector-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-selector-control > svg {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: transform 0.2s ease;
+}
+
+.course-selector-control > .course-selector-btn.is-open > svg {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.course-selector-control .course-selector-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.course-selector-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 100%;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 5px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  animation: fadeInUp 0.16s ease-out;
+}
+
+.course-selector-option {
+  display: block;
+  width: 100%;
+  padding: 9px 11px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.course-selector-option:hover,
+.course-selector-option:focus-visible {
+  outline: none;
+  background: var(--bg-sunken);
+}
+
+.course-selector-option[aria-selected='true'] {
+  background: var(--bg-sunken);
+  color: var(--action-primary);
+  font-weight: 600;
+}
+
+.course-selector-error {
+  display: block;
+  max-width: 320px;
+  margin-top: 6px;
+  color: #b91c1c;
+  font-size: 0.75rem;
 }
 
 .course-selector-btn:hover {
@@ -811,9 +981,25 @@
     gap: 10px;
   }
 
+  .course-selector-control {
+    width: 100%;
+  }
+
+  .course-selector-control .course-selector-btn {
+    max-width: none;
+  }
+
   .course-selector-btn {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .course-selector-control {
+    width: 100%;
+  }
+
+  .course-selector-control .course-selector-btn {
+    max-width: none;
   }
 
   .btn-primary-action {

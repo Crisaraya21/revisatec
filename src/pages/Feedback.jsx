@@ -1,11 +1,24 @@
-import { useState, useEffect } from 'react';
-import { api, ApiError } from '../lib/apiClient';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { api, ApiError, buildQuery } from '../lib/apiClient';
+import { useCourse } from '../context/CourseContext';
 import { Icons } from '../components/Icons';
 import './Feedback.css';
 
 export default function Feedback() {
-  const [groups, setGroups] = useState([]);
-  const [selectedGroupId, setSelectedGroupId] = useState(null);
+  const { selectedCourseId, loading: coursesLoading } = useCourse();
+  const [groupsState, setGroupsState] = useState({ courseId: null, items: [] });
+  const groups = useMemo(
+    () => Object.is(groupsState.courseId, selectedCourseId) ? groupsState.items : [],
+    [groupsState, selectedCourseId]
+  );
+  const [groupSelection, setGroupSelection] = useState({ courseId: null, groupId: null });
+  const selectedGroupId = Object.is(groupSelection.courseId, selectedCourseId)
+    ? groupSelection.groupId
+    : null;
+  const setSelectedGroupId = useCallback(
+    (groupId) => setGroupSelection({ courseId: selectedCourseId, groupId }),
+    [selectedCourseId]
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
@@ -15,7 +28,7 @@ export default function Feedback() {
   const [professorText, setProfessorText] = useState('');
   const [criteria, setCriteria] = useState([]);
   const [deliveryTitle, setDeliveryTitle] = useState('Entrega 2: Prototipo');
-  const [groupName, setGroupName] = useState('Grupo A');
+  const [groupName, setGroupName] = useState('');
   const [toast, setToast] = useState(null);
   const [httpResult, setHttpResult] = useState(null);
 
@@ -27,42 +40,56 @@ export default function Feedback() {
   };
 
   useEffect(() => {
-    api.get('/groups?page=1&pageSize=100&search=')
+    if (coursesLoading) return undefined;
+    if (selectedCourseId === null) return undefined;
+
+    let active = true;
+    api.get(`/groups${buildQuery({ page: 1, pageSize: 100, courseId: selectedCourseId })}`)
       .then((res) => {
-        const nextGroups = Array.isArray(res?.items) ? res.items : [];
-        setGroups(nextGroups);
-        setSelectedGroupId((current) => current ?? nextGroups[0]?.id ?? null);
+        if (!active) return;
+        const nextGroups = Array.isArray(res?.content)
+          ? res.content
+          : Array.isArray(res?.items) ? res.items : [];
+        setApiError(null);
+        setGroupsState({ courseId: selectedCourseId, items: nextGroups });
+        setSelectedGroupId(nextGroups[0]?.id ?? null);
       })
       .catch((err) => {
+        if (!active) return;
         console.error('Error al cargar grupos para feedback:', err);
         setApiError('No se pudieron cargar los grupos desde APIM.');
       });
-  }, []);
+    return () => { active = false; };
+  }, [selectedCourseId, coursesLoading, setSelectedGroupId]);
 
   // Cargar datos de Azure APIM (/groups/{id}/feedback y /groups/{id}/analysis)
   useEffect(() => {
     if (selectedGroupId === null) return;
+    let active = true;
     async function loadGroupFeedback() {
       setIsLoading(true);
       setApiError(null);
       try {
         const feedbackRes = await api.get(`/groups/${selectedGroupId}/feedback`);
+        if (!active) return;
         setAiFeedback(feedbackRes?.ai || '');
         setProfessorText(feedbackRes?.professor || '');
         setDeliveryTitle(feedbackRes?.deliveryTitle || 'Entrega 2: Prototipo');
         setGroupName(
           feedbackRes?.groupName ||
-          groups.find((g) => g.id === selectedGroupId)?.name ||
-          (selectedGroupId === 2 ? 'Grupo A' : `Grupo ${selectedGroupId}`)
+          groups.find((g) => String(g.id) === String(selectedGroupId))?.name ||
+          `Grupo ${selectedGroupId}`
         );
 
         const analysisRes = await api.get(`/groups/${selectedGroupId}/analysis`);
+        if (!active) return;
         if (analysisRes?.criteria?.length > 0) {
           setCriteria(analysisRes.criteria);
         } else {
           setCriteria([]);
         }
       } catch (err) {
+        if (!active) return;
         console.error('Error al cargar feedback desde APIM:', err);
         setApiError('Error de conexion con Azure APIM: No se pudo cargar la retroalimentacion del grupo.');
         setAiFeedback('');
@@ -70,11 +97,12 @@ export default function Feedback() {
         setDeliveryTitle(null);
         setCriteria([]);
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     }
     loadGroupFeedback();
-  }, [selectedGroupId]);
+    return () => { active = false; };
+  }, [selectedGroupId, groups]);
 
   const handleUseAiBase = () => {
     setProfessorText(aiFeedback);
@@ -108,6 +136,7 @@ export default function Feedback() {
       setIsSaving(false);
     }
   };
+  const isFeedbackLoading = selectedGroupId !== null && isLoading;
 
   return (
     <div className="feedback-page-container">
@@ -144,35 +173,32 @@ export default function Feedback() {
         <div className="feedback-header-left">
           <h1 className="feedback-title">Retroalimentacion</h1>
           <span className="feedback-meta">
-            {groupName || groups.find((group) => group.id === selectedGroupId)?.name || 'Grupo A'}
+            {selectedGroupId === null
+              ? 'Seleccione un grupo'
+              : groupName || groups.find((group) => String(group.id) === String(selectedGroupId))?.name || 'Seleccione un grupo'}
             {deliveryTitle ? ` · ${deliveryTitle}` : ''}
           </span>
         </div>
 
         <div className="feedback-header-actions">
           <select
-            value={selectedGroupId ?? 2}
+            value={selectedGroupId ?? ''}
             onChange={(e) => setSelectedGroupId(Number(e.target.value))}
             className="filter-select"
             aria-label="Seleccionar grupo"
+            disabled={groups.length === 0}
           >
-            {groups.length > 0 ? (
-              groups.map((group) => (
+            {groups.length > 0
+              ? groups.map((group) => (
                 <option key={group.id} value={group.id}>{group.name}</option>
               ))
-            ) : (
-              <>
-                <option value={2}>Grupo A</option>
-                <option value={1}>Grupo 1</option>
-                <option value={3}>Grupo 3</option>
-              </>
-            )}
+              : <option value="">No hay grupos disponibles</option>}
           </select>
 
           <button
             type="button"
             onClick={handlePublish}
-            disabled={isSaving || isLoading || !professorText.trim()}
+            disabled={isSaving || isFeedbackLoading || selectedGroupId === null || !professorText.trim()}
             className="btn-primary-action"
           >
             <Icons.Send />
@@ -192,14 +218,14 @@ export default function Feedback() {
       )}
 
       {/* Cargando */}
-      {isLoading && (
+      {isFeedbackLoading && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
           Cargando retroalimentacion desde Azure APIM...
         </div>
       )}
 
       {/* Contenido principal */}
-      {!isLoading && !apiError && (
+      {selectedGroupId !== null && !isFeedbackLoading && !apiError && (
         <>
           {/* Propuesta IA */}
           <div className="ai-proposal-card">

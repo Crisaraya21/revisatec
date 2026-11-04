@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../lib/apiClient';
-import { coursesApi } from '../api';
+import { useCourse } from '../context/CourseContext';
 import './Rubric.css';
 
 // Iconos SVG para Rúbrica
@@ -65,6 +65,12 @@ const RubricIcons = {
 };
 
 export default function Rubric() {
+  const {
+    selectedCourse,
+    selectedCourseId,
+    loading: coursesLoading,
+    error: coursesError,
+  } = useCourse();
   const [criteria, setCriteria] = useState([]);
   const [instructions, setInstructions] = useState('');
   const [frequency, setFrequency] = useState('');
@@ -72,9 +78,9 @@ export default function Rubric() {
   const [nextRunAt, setNextRunAt] = useState(null);
   const [fileName, setFileName] = useState('');
   const [interpretationStatus, setInterpretationStatus] = useState('');
-  const [courseName, setCourseName] = useState(null);
   const [savedSettings, setSavedSettings] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadedCourseId, setLoadedCourseId] = useState(null);
   const [apiError, setApiError] = useState(null);
   const [saveError, setSaveError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -82,23 +88,22 @@ export default function Rubric() {
   const [editingIndex, setEditingIndex] = useState(null);
   const [editWeightValue, setEditWeightValue] = useState(0);
 
-  // Cargar datos de la API de Azure APIM (/courses/1/...)
+  // Cargar la configuración del curso seleccionado en APIM.
   useEffect(() => {
+    if (coursesLoading) return undefined;
+    if (selectedCourseId === null) return undefined;
+
+    let active = true;
     async function loadCourseConfig() {
       setIsLoading(true);
       setApiError(null);
       try {
-        const [coursesRes, rubricRes, instructionsRes, configRes] = await Promise.all([
-          coursesApi.list(),
-          api.get('/courses/1/rubric'),
-          api.get('/courses/1/instructions'),
-          api.get('/courses/1/scraping-config'),
+        const [rubricRes, instructionsRes, configRes] = await Promise.all([
+          api.get(`/courses/${selectedCourseId}/rubric`),
+          api.get(`/courses/${selectedCourseId}/instructions`),
+          api.get(`/courses/${selectedCourseId}/scraping-config`),
         ]);
-        const coursesList = Array.isArray(coursesRes?.content)
-          ? coursesRes.content
-          : Array.isArray(coursesRes?.items)
-          ? coursesRes.items
-          : [];
+        if (!active) return;
         const loadedSettings = {
           criteria: Array.isArray(rubricRes?.criteria) ? rubricRes.criteria : [],
           instructions: instructionsRes?.text || '',
@@ -107,7 +112,6 @@ export default function Rubric() {
           nextRunAt: configRes?.nextRunAt || null,
           fileName: rubricRes?.fileName || '',
           interpretationStatus: rubricRes?.interpretationStatus || '',
-          courseName: coursesList.find((course) => course.id === 1)?.name || null,
         };
         setCriteria(loadedSettings.criteria);
         setInstructions(loadedSettings.instructions);
@@ -116,9 +120,10 @@ export default function Rubric() {
         setNextRunAt(loadedSettings.nextRunAt);
         setFileName(loadedSettings.fileName);
         setInterpretationStatus(loadedSettings.interpretationStatus);
-        setCourseName(loadedSettings.courseName);
         setSavedSettings(loadedSettings);
+        setLoadedCourseId(selectedCourseId);
       } catch (err) {
+        if (!active) return;
         console.error('Error al cargar la configuración desde APIM:', err);
         setApiError('No se pudo cargar la configuración desde APIM.');
         setCriteria([]);
@@ -128,14 +133,22 @@ export default function Rubric() {
         setNextRunAt(null);
         setFileName('');
         setInterpretationStatus('');
-        setCourseName(null);
+        setLoadedCourseId(selectedCourseId);
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     }
 
     loadCourseConfig();
-  }, []);
+    return () => { active = false; };
+  }, [selectedCourseId, coursesLoading, coursesError]);
+
+  const isConfigLoading = coursesLoading || (
+    selectedCourseId !== null && (isLoading || loadedCourseId !== selectedCourseId)
+  );
+  const visibleApiError = selectedCourseId === null
+    ? coursesError || 'No hay cursos disponibles.'
+    : apiError;
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -143,14 +156,14 @@ export default function Rubric() {
     setSaveError(null);
     try {
       await Promise.all([
-        api.put('/courses/1/rubric', { criteria }),
-        api.put('/courses/1/instructions', { text: instructions }),
-        api.put('/courses/1/scraping-config', {
+        api.put(`/courses/${selectedCourseId}/rubric`, { criteria }),
+        api.put(`/courses/${selectedCourseId}/instructions`, { text: instructions }),
+        api.put(`/courses/${selectedCourseId}/scraping-config`, {
           frequency,
           minReviewers,
         }),
       ]);
-      setSavedSettings({ criteria, instructions, frequency, minReviewers, nextRunAt, fileName, interpretationStatus, courseName });
+      setSavedSettings({ criteria, instructions, frequency, minReviewers, nextRunAt, fileName, interpretationStatus });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
@@ -170,7 +183,6 @@ export default function Rubric() {
     setNextRunAt(savedSettings.nextRunAt);
     setFileName(savedSettings.fileName);
     setInterpretationStatus(savedSettings.interpretationStatus);
-    setCourseName(savedSettings.courseName);
   };
 
   const startEditWeight = (index) => {
@@ -191,7 +203,7 @@ export default function Rubric() {
       <div className="rubric-header">
         <div className="rubric-header-left">
           <h1 className="rubric-title">Configuración del curso</h1>
-          <span className="rubric-meta">{courseName || 'Curso no disponible desde APIM'}</span>
+          <span className="rubric-meta">{selectedCourse?.name || 'Curso no disponible desde APIM'}</span>
         </div>
 
         <div className="rubric-header-actions">
@@ -201,7 +213,7 @@ export default function Rubric() {
           <button
             type="button"
             onClick={handleSave}
-            disabled={isSaving || isLoading || Boolean(apiError) || criteria.length === 0 || !frequency || minReviewers === null}
+            disabled={isSaving || isConfigLoading || selectedCourseId === null || Boolean(visibleApiError) || criteria.length === 0 || !frequency || minReviewers === null}
             className="btn-save-primary"
           >
             <RubricIcons.CheckCircle />
@@ -210,13 +222,13 @@ export default function Rubric() {
         </div>
       </div>
 
-      {(apiError || saveError) && (
+      {(visibleApiError || saveError) && (
         <div role="alert" style={{ color: '#ef4444', padding: '12px 16px' }}>
-          {apiError || saveError}
+          {visibleApiError || saveError}
         </div>
       )}
 
-      {isLoading && (
+      {isConfigLoading && (
         <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
           Cargando configuración desde APIM...
         </div>

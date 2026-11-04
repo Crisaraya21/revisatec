@@ -1,4 +1,4 @@
-﻿// Cliente central de la API — Azure API Management (APIM).
+﻿// Cliente central de la API - Azure API Management (APIM).
 // La URL base y la clave NUNCA se hardcodean ni se suben al repo:
 // vienen de variables de entorno que GitHub Actions inyecta en el build.
 //
@@ -67,13 +67,12 @@ async function request(path, options = {}) {
   return body;
 }
 
-export function buildQuery({ page, pageSize, search } = {}) {
+export function buildQuery({ page, pageSize, search, courseId } = {}) {
   const params = new URLSearchParams();
   if (page !== undefined && page !== null) params.set('page', String(page));
-  if (pageSize !== undefined && pageSize !== null)
-    params.set('pageSize', String(pageSize));
-  if (search !== undefined && search !== null && search.trim() !== '')
-    params.set('search', search.trim());
+  if (pageSize !== undefined && pageSize !== null) params.set('pageSize', String(pageSize));
+  if (search !== undefined && search !== null && search.trim() !== '') params.set('search', search.trim());
+  if (courseId !== undefined && courseId !== null) params.set('courseId', String(courseId));
   const queryString = params.toString();
   return queryString ? `?${queryString}` : '';
 }

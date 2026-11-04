@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, ApiError } from '../lib/apiClient';
+import { api, ApiError, buildQuery } from '../lib/apiClient';
 import { useAuth } from '../context/AuthContext';
+import { useCourse } from '../context/CourseContext';
 import { Icons } from '../components/Icons';
 import './StudentDashboard.css';
 
 export default function StudentDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedCourseId } = useCourse();
   const studentFirstName = user?.name?.split(' ')[0] || 'Estudiante';
   const [groupInfo, setGroupInfo] = useState(null);
   const [criteria, setCriteria] = useState([]);
@@ -15,7 +17,10 @@ export default function StudentDashboard() {
   const [milestones, setMilestones] = useState([]);
   const [feedbackSummary, setFeedbackSummary] = useState(null);
   const [issues, setIssues] = useState([]);
-  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [upcomingEventsState, setUpcomingEventsState] = useState({ courseId: null, items: [] });
+  const upcomingEvents = Object.is(upcomingEventsState.courseId, selectedCourseId)
+    ? upcomingEventsState.items
+    : [];
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [toast] = useState(null);
@@ -93,18 +98,6 @@ export default function StudentDashboard() {
           if (isMounted) setIssues([]);
         }
 
-        // 7. Cargar próximas fechas
-        try {
-          const eventsRes = await api.get('/calendar/events');
-          if (isMounted) {
-            const evList = Array.isArray(eventsRes?.items)
-              ? eventsRes.items
-              : (Array.isArray(eventsRes) ? eventsRes : []);
-            setUpcomingEvents(evList);
-          }
-        } catch {
-          if (isMounted) setUpcomingEvents([]);
-        }
       } catch (err) {
         if (!isMounted) return;
         console.error('Error al cargar datos del estudiante:', err);
@@ -138,13 +131,24 @@ export default function StudentDashboard() {
 
 
   useEffect(() => {
-    api.get('/calendar/events')
-      .then((res) => setUpcomingEvents(Array.isArray(res?.items) ? res.items : []))
+    let active = true;
+    api.get(`/calendar/events${buildQuery({ courseId: selectedCourseId })}`)
+      .then((res) => {
+        if (!active) return;
+        setUpcomingEventsState({
+          courseId: selectedCourseId,
+          items: Array.isArray(res?.content)
+            ? res.content
+            : Array.isArray(res?.items) ? res.items : (Array.isArray(res) ? res : []),
+        });
+      })
       .catch((err) => {
+        if (!active) return;
         console.warn('No se pudieron cargar las próximas fechas:', err);
-        setUpcomingEvents([]);
+        setUpcomingEventsState({ courseId: selectedCourseId, items: [] });
       });
-  }, []);
+    return () => { active = false; };
+  }, [selectedCourseId, reloadKey]);
 
   return (
     <div className="student-dashboard-container">

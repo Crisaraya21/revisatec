@@ -532,3 +532,154 @@
     justify-content: center;
   }
 }
+
+/* Nuevas clases para validación y accesibilidad de Rúbrica (MS2) */
+.badge-weight-valid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background-color: var(--badge-success-bg, rgba(34, 197, 94, 0.12));
+  color: var(--badge-success-text, #16a34a);
+  border: 1px solid var(--badge-success-border, rgba(34, 197, 94, 0.3));
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.badge-weight-invalid {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  background-color: var(--badge-alert-bg, rgba(239, 68, 68, 0.12));
+  color: var(--badge-alert-text, #dc2626);
+  border: 1px solid var(--badge-alert-border, rgba(239, 68, 68, 0.3));
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.tag-proximamente {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--bg-sunken);
+  color: var(--text-muted);
+  border: 1px solid var(--border-default);
+  margin-left: 6px;
+}
+
+.btn-upload-file:disabled,
+.btn-outline:disabled,
+.btn-save-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.section-error-alert {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background-color: var(--badge-alert-bg, rgba(239, 68, 68, 0.08));
+  border: 1px solid var(--badge-alert-border, rgba(239, 68, 68, 0.25));
+  color: var(--badge-alert-text, #dc2626);
+  font-size: 0.813rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.section-loading-spinner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.844rem;
+  justify-content: center;
+}
+
+.char-counter {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.criterion-add-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border-default);
+}
+
+.criterion-input-name {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.844rem;
+  outline: none;
+}
+
+.criterion-input-name:focus {
+  border-color: var(--action-primary);
+}
+
+.criterion-input-weight {
+  width: 80px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 0.844rem;
+  text-align: right;
+  outline: none;
+}
+
+.criterion-input-weight:focus {
+  border-color: var(--action-primary);
+}
+
+.btn-add-criterion {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background-color: var(--action-primary);
+  color: #fff;
+  font-size: 0.813rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-add-criterion:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-remove-criterion {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-remove-criterion:hover {
+  color: var(--badge-alert-text, #dc2626);
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { api, ApiError, buildQuery } from '../lib/apiClient';
+import { ApiError } from '../lib/apiClient';
+import { groupsApi, groupAnalysisApi } from '../api';
 import { useCourse } from '../context/CourseContext';
 import { Icons } from '../components/Icons';
 import './Feedback.css';
@@ -8,43 +9,62 @@ export default function Feedback() {
   const { selectedCourseId, loading: coursesLoading } = useCourse();
   const [groupsState, setGroupsState] = useState({ courseId: null, items: [] });
   const groups = useMemo(
-    () => Object.is(groupsState.courseId, selectedCourseId) ? groupsState.items : [],
+    () => (Object.is(groupsState.courseId, selectedCourseId) ? groupsState.items : []),
     [groupsState, selectedCourseId]
   );
+
   const [groupSelection, setGroupSelection] = useState({ courseId: null, groupId: null });
   const selectedGroupId = Object.is(groupSelection.courseId, selectedCourseId)
     ? groupSelection.groupId
     : null;
+
   const setSelectedGroupId = useCallback(
     (groupId) => setGroupSelection({ courseId: selectedCourseId, groupId }),
     [selectedCourseId]
   );
+
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isPublished, setIsPublished] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [apiError, setApiError] = useState(null);
 
   const [aiFeedback, setAiFeedback] = useState('');
   const [professorText, setProfessorText] = useState('');
+  const [savedProfessorText, setSavedProfessorText] = useState('');
   const [criteria, setCriteria] = useState([]);
-  const [deliveryTitle, setDeliveryTitle] = useState('Entrega 2: Prototipo');
+  const [deliveryTitle, setDeliveryTitle] = useState('Entrega de proyecto');
   const [groupName, setGroupName] = useState('');
+  const [status, setStatus] = useState('draft');
   const [toast, setToast] = useState(null);
-  const [httpResult, setHttpResult] = useState(null);
+  const [showConfirmPublish, setShowConfirmPublish] = useState(false);
 
-  const showToast = (type, code, title, message) => {
-    setToast({ type, code, title, message });
+  const isDirty = professorText !== savedProfessorText;
+
+  const showToast = (type, title, message) => {
+    setToast({ type, title, message });
     setTimeout(() => {
       setToast((prev) => (prev?.message === message ? null : prev));
     }, 4500);
   };
 
+  // Alerta si el usuario intenta cerrar o recargar con cambios sin guardar
   useEffect(() => {
-    if (coursesLoading) return undefined;
-    if (selectedCourseId === null) return undefined;
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Cargar grupos del curso seleccionado
+  useEffect(() => {
+    if (coursesLoading || selectedCourseId === null) return undefined;
 
     let active = true;
-    api.get(`/groups${buildQuery({ page: 1, pageSize: 100, courseId: selectedCourseId })}`)
+    groupsApi.list({ page: 1, pageSize: 100, courseId: selectedCourseId })
       .then((res) => {
         if (!active) return;
         const nextGroups = Array.isArray(res?.content)
@@ -52,97 +72,165 @@ export default function Feedback() {
           : Array.isArray(res?.items) ? res.items : [];
         setApiError(null);
         setGroupsState({ courseId: selectedCourseId, items: nextGroups });
-        setSelectedGroupId(nextGroups[0]?.id ?? null);
+        if (nextGroups.length > 0) {
+          setSelectedGroupId(nextGroups[0].id);
+        } else {
+          setSelectedGroupId(null);
+        }
       })
       .catch((err) => {
         if (!active) return;
         console.error('Error al cargar grupos para feedback:', err);
-        setApiError('No se pudieron cargar los grupos desde APIM.');
+        setApiError('No se pudieron cargar los grupos desde el servidor.');
       });
+
     return () => { active = false; };
   }, [selectedCourseId, coursesLoading, setSelectedGroupId]);
 
-  // Cargar datos de Azure APIM (/groups/{id}/feedback y /groups/{id}/analysis)
+  // Cargar retroalimentación y análisis del grupo seleccionado
   useEffect(() => {
-    if (selectedGroupId === null) return;
+    if (selectedGroupId === null) return undefined;
     let active = true;
+
     async function loadGroupFeedback() {
       setIsLoading(true);
       setApiError(null);
-      try {
-        const feedbackRes = await api.get(`/groups/${selectedGroupId}/feedback`);
-        if (!active) return;
-        setAiFeedback(feedbackRes?.ai || '');
-        setProfessorText(feedbackRes?.professor || '');
-        setDeliveryTitle(feedbackRes?.deliveryTitle || 'Entrega 2: Prototipo');
+
+      const [fbResult, analysisResult] = await Promise.allSettled([
+        groupAnalysisApi.getFeedback(selectedGroupId),
+        groupAnalysisApi.getAnalysis(selectedGroupId),
+      ]);
+
+      if (!active) return;
+
+      if (fbResult.status === 'fulfilled') {
+        const fbData = fbResult.value;
+        const aiText = fbData?.ai || '';
+        const profText = fbData?.professor || '';
+        setAiFeedback(aiText);
+        setProfessorText(profText);
+        setSavedProfessorText(profText);
+        setDeliveryTitle(fbData?.deliveryTitle || 'Entrega de proyecto');
+        setStatus(fbData?.status === 'published' ? 'published' : 'draft');
         setGroupName(
-          feedbackRes?.groupName ||
+          fbData?.groupName ||
           groups.find((g) => String(g.id) === String(selectedGroupId))?.name ||
           `Grupo ${selectedGroupId}`
         );
-
-        const analysisRes = await api.get(`/groups/${selectedGroupId}/analysis`);
-        if (!active) return;
-        if (analysisRes?.criteria?.length > 0) {
-          setCriteria(analysisRes.criteria);
+      } else {
+        const err = fbResult.reason;
+        if (err instanceof ApiError && err.status === 404) {
+          // Si no existe aún retroalimentación creada en MS2, se inicializa como nuevo borrador
+          setAiFeedback('');
+          setProfessorText('');
+          setSavedProfessorText('');
+          setStatus('draft');
+          setGroupName(
+            groups.find((g) => String(g.id) === String(selectedGroupId))?.name ||
+            `Grupo ${selectedGroupId}`
+          );
         } else {
-          setCriteria([]);
+          console.error('Error al cargar feedback:', err);
+          setApiError('No se pudo cargar la retroalimentación del grupo.');
         }
-      } catch (err) {
-        if (!active) return;
-        console.error('Error al cargar feedback desde APIM:', err);
-        setApiError('Error de conexion con Azure APIM: No se pudo cargar la retroalimentacion del grupo.');
-        setAiFeedback('');
-        setProfessorText('');
-        setDeliveryTitle(null);
-        setCriteria([]);
-      } finally {
-        if (active) setIsLoading(false);
       }
+
+      if (analysisResult.status === 'fulfilled') {
+        const analysisData = analysisResult.value;
+        setCriteria(Array.isArray(analysisData?.criteria) ? analysisData.criteria : []);
+      } else {
+        setCriteria([]);
+      }
+
+      setIsLoading(false);
     }
+
     loadGroupFeedback();
     return () => { active = false; };
   }, [selectedGroupId, groups]);
 
   const handleUseAiBase = () => {
+    if (!aiFeedback) return;
     setProfessorText(aiFeedback);
   };
 
   const handleDiscard = () => {
-    setProfessorText('');
+    setProfessorText(savedProfessorText);
   };
 
-  const handlePublish = async () => {
+  // Guardar borrador (PUT /groups/{id}/feedback)
+  const handleSaveDraft = async () => {
+    if (selectedGroupId === null || isSaving || isPublishing) return;
     setIsSaving(true);
+    setApiError(null);
     try {
-      await api.put(`/groups/${selectedGroupId}/feedback`, {
+      await groupAnalysisApi.saveFeedback(selectedGroupId, {
         ai: aiFeedback,
         professor: professorText,
       });
-      await api.post(`/groups/${selectedGroupId}/feedback/publish`, {});
-      setIsPublished(true);
+      setSavedProfessorText(professorText);
       showToast(
         'success',
-        200,
-        'Feedback Publicado (HTTP 200 OK)',
-        `La retroalimentación para el Grupo ${selectedGroupId} se guardó y publicó en Azure APIM.`
+        'Borrador guardado',
+        `La versión del profesor para ${groupName} ha sido guardada exitosamente.`
       );
-      setTimeout(() => setIsPublished(false), 3500);
     } catch (err) {
-      console.error('Error al publicar feedback:', err);
+      console.error('Error al guardar borrador de feedback:', err);
       const code = err instanceof ApiError ? err.status : 500;
-      showToast('error', code, `Error HTTP ${code}`, err.message || 'Error al publicar la retroalimentación.');
+      showToast(
+        'error',
+        `Error al guardar (${code})`,
+        err.message || 'No se pudo guardar el borrador en el servidor.'
+      );
     } finally {
       setIsSaving(false);
     }
   };
+
+  // Confirmar y publicar (POST /groups/{id}/feedback/publish)
+  const handleConfirmPublish = async () => {
+    if (selectedGroupId === null || isPublishing) return;
+    setIsPublishing(true);
+    try {
+      // Guardar cambios pendientes primero si está dirty
+      if (isDirty) {
+        await groupAnalysisApi.saveFeedback(selectedGroupId, {
+          ai: aiFeedback,
+          professor: professorText,
+        });
+        setSavedProfessorText(professorText);
+      }
+
+      await groupAnalysisApi.publishFeedback(selectedGroupId);
+      setStatus('published');
+      setShowConfirmPublish(false);
+      showToast(
+        'success',
+        'Retroalimentación publicada',
+        `Se ha publicado la retroalimentación para ${groupName}. Los estudiantes ya pueden consultarla.`
+      );
+    } catch (err) {
+      console.error('Error al publicar feedback:', err);
+      const code = err instanceof ApiError ? err.status : 500;
+      showToast(
+        'error',
+        `Error al publicar (${code})`,
+        err.message || 'No se pudo publicar la retroalimentación. Los cambios locales se mantienen.'
+      );
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const isFeedbackLoading = selectedGroupId !== null && isLoading;
 
   return (
     <div className="feedback-page-container">
-      {/* Toast Flotante para notificaciones HTTP */}
+      {/* Toast Flotante para notificaciones de acción */}
       {toast && (
         <div
+          role="status"
+          aria-live="polite"
           style={{
             position: 'fixed',
             top: 24,
@@ -171,12 +259,26 @@ export default function Feedback() {
       {/* Encabezado */}
       <div className="feedback-header">
         <div className="feedback-header-left">
-          <h1 className="feedback-title">Retroalimentacion</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <h1 className="feedback-title">Retroalimentación</h1>
+            <span className={`feedback-status-badge ${status === 'published' ? 'published' : 'draft'}`}>
+              {status === 'published' ? (
+                <>
+                  <Icons.CheckCircle />
+                  <span>Publicada</span>
+                </>
+              ) : (
+                <>
+                  <Icons.Clock />
+                  <span>Borrador</span>
+                </>
+              )}
+            </span>
+          </div>
           <span className="feedback-meta">
             {selectedGroupId === null
               ? 'Seleccione un grupo'
-              : groupName || groups.find((group) => String(group.id) === String(selectedGroupId))?.name || 'Seleccione un grupo'}
-            {deliveryTitle ? ` · ${deliveryTitle}` : ''}
+              : `${groupName || 'Grupo seleccionado'} · ${deliveryTitle}`}
           </span>
         </div>
 
@@ -185,8 +287,8 @@ export default function Feedback() {
             value={selectedGroupId ?? ''}
             onChange={(e) => setSelectedGroupId(Number(e.target.value))}
             className="filter-select"
-            aria-label="Seleccionar grupo"
-            disabled={groups.length === 0}
+            aria-label="Seleccionar grupo para retroalimentación"
+            disabled={groups.length === 0 || isSaving || isPublishing}
           >
             {groups.length > 0
               ? groups.map((group) => (
@@ -195,32 +297,56 @@ export default function Feedback() {
               : <option value="">No hay grupos disponibles</option>}
           </select>
 
+          {/* Botón Guardar borrador */}
           <button
             type="button"
-            onClick={handlePublish}
-            disabled={isSaving || isFeedbackLoading || selectedGroupId === null || !professorText.trim()}
+            onClick={handleSaveDraft}
+            disabled={!isDirty || isSaving || isPublishing || isFeedbackLoading || selectedGroupId === null}
+            className="btn-secondary-save"
+            title="Guarda la versión actual como borrador sin notificar a los estudiantes"
+          >
+            <Icons.CheckCircle />
+            <span>{isSaving ? 'Guardando...' : 'Guardar borrador'}</span>
+          </button>
+
+          {/* Botón Publicar con diálogo de confirmación */}
+          <button
+            type="button"
+            onClick={() => setShowConfirmPublish(true)}
+            disabled={isSaving || isPublishing || isFeedbackLoading || selectedGroupId === null || !professorText.trim()}
             className="btn-primary-action"
+            title="Publica la versión a los estudiantes y emite la notificación"
           >
             <Icons.Send />
-            <span>{isSaving ? 'Publicando...' : isPublished ? 'Publicado' : 'Publicar'}</span>
+            <span>{isPublishing ? 'Publicando...' : 'Publicar'}</span>
           </button>
         </div>
       </div>
 
       {/* Error API */}
       {apiError && (
-        <div style={{ backgroundColor: 'var(--badge-alert-bg)', color: 'var(--badge-alert-text)', border: '1px solid var(--badge-alert-border)', padding: '16px 20px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <Icons.AlertTriangle />
-            <span style={{ fontSize: '0.844rem', fontWeight: 600 }}>{apiError}</span>
-          </div>
+        <div
+          role="alert"
+          style={{
+            backgroundColor: 'var(--badge-alert-bg)',
+            color: 'var(--badge-alert-text)',
+            border: '1px solid var(--badge-alert-border)',
+            padding: '16px 20px',
+            borderRadius: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <Icons.AlertTriangle />
+          <span style={{ fontSize: '0.844rem', fontWeight: 600 }}>{apiError}</span>
         </div>
       )}
 
       {/* Cargando */}
       {isFeedbackLoading && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-          Cargando retroalimentacion desde Azure APIM...
+          Cargando retroalimentación del grupo...
         </div>
       )}
 
@@ -235,7 +361,7 @@ export default function Feedback() {
               </div>
               <div>
                 <h3 className="ai-proposal-title">Propuesta generada por IA</h3>
-                <span className="ai-proposal-meta">Basada en el analisis del repositorio</span>
+                <span className="ai-proposal-meta">Basada en el análisis del repositorio</span>
               </div>
             </div>
             <div className="ai-proposal-content-box">
@@ -243,39 +369,61 @@ export default function Feedback() {
                 <p>{aiFeedback}</p>
               ) : (
                 <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                  Sin propuesta de IA disponible.
+                  Sin propuesta de IA disponible para esta entrega.
                 </p>
               )}
             </div>
             <div className="ai-proposal-actions">
-              <button type="button" onClick={handleUseAiBase} className="btn-use-ai" disabled={!aiFeedback}>
+              <button
+                type="button"
+                onClick={handleUseAiBase}
+                className="btn-use-ai"
+                disabled={!aiFeedback || isSaving || isPublishing}
+              >
                 <Icons.CheckCircle />
                 <span>Usar como base</span>
               </button>
-              <button type="button" onClick={handleDiscard} className="btn-discard">
-                Descartar
+              <button
+                type="button"
+                onClick={handleDiscard}
+                className="btn-discard"
+                disabled={!isDirty || isSaving || isPublishing}
+              >
+                Descartar cambios
               </button>
             </div>
           </div>
 
-          {/* Version del profesor */}
+          {/* Versión del profesor */}
           <div className="professor-card">
             <div className="prof-icon-badge">
               <Icons.Edit />
             </div>
             <div className="professor-card-header">
-              <h3 className="professor-card-title">Tu version</h3>
-              <span className="professor-card-meta">Editable &middot; Se publicara a los estudiantes</span>
+              <h3 className="professor-card-title">Tu versión</h3>
+              <span className="professor-card-meta">
+                {status === 'published'
+                  ? 'Publicada · Visible para los estudiantes del grupo'
+                  : 'Borrador editable · Se notificará al publicar'}
+              </span>
             </div>
             <textarea
               className="professor-textarea"
               value={professorText}
               onChange={(e) => setProfessorText(e.target.value)}
-              placeholder="Escribe tu retroalimentacion aqui..."
+              placeholder="Escribe la retroalimentación para el grupo aquí..."
+              aria-label="Texto de retroalimentación del profesor"
+              disabled={isSaving || isPublishing}
             />
+            <div className="feedback-char-count">
+              <span>{professorText.length} caracteres</span>
+              {isDirty && (
+                <span className="feedback-dirty-indicator">• Cambios sin guardar en borrador</span>
+              )}
+            </div>
           </div>
 
-          {/* Criterios */}
+          {/* Cumplimiento por criterio */}
           {criteria.length > 0 && (
             <div className="criteria-card">
               <div className="criteria-card-header">
@@ -296,11 +444,11 @@ export default function Feedback() {
                           : 'info';
 
                   return (
-                    <div key={index} className="criterion-row">
+                    <div key={item.name || index} className="criterion-row">
                       <div className="criterion-info-top">
                         <span className="criterion-name">{item.name}</span>
                         <span className={`criterion-badge ${badgeClass}`}>
-                          {item.level}
+                          {item.level || 'Evaluado'}
                         </span>
                       </div>
                       <div className="criterion-bar-row">
@@ -308,7 +456,7 @@ export default function Feedback() {
                           <div
                             className={`criterion-fill ${badgeClass}`}
                             style={{ width: `${percent}%` }}
-                          ></div>
+                          />
                         </div>
                         <span className="criterion-fraction">
                           {item.score} / {item.max}
@@ -320,31 +468,52 @@ export default function Feedback() {
               </div>
             </div>
           )}
-
         </>
       )}
 
-      {httpResult && (
-        <div onClick={() => setHttpResult(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--card-bg, #fff)', borderRadius: 14, padding: '28px 28px 24px', maxWidth: 480, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: httpResult.code === 400 ? '1.5px solid #f59e0b' : '1.5px solid #ef4444' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ backgroundColor: httpResult.code === 400 ? '#fef3c7' : '#fee2e2', color: httpResult.code === 400 ? '#b45309' : '#991b1b', fontWeight: 800, fontSize: '1.1rem', borderRadius: 8, padding: '4px 12px', fontFamily: 'monospace' }}>HTTP {httpResult.code}</span>
-                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary, #111)' }}>{httpResult.label}</span>
-              </div>
-              <button type="button" onClick={() => setHttpResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-secondary, #666)', lineHeight: 1 }}>✕</button>
-            </div>
-            {httpResult.endpoint && (
-              <div style={{ marginBottom: 12, padding: '6px 12px', backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 6, fontSize: '0.781rem', fontFamily: 'monospace', color: 'var(--text-secondary, #444)' }}>
-                <strong>Solicitud a APIM:</strong> {httpResult.endpoint}
-              </div>
+      {/* Modal de confirmación para Publicar */}
+      {showConfirmPublish && (
+        <div
+          className="feedback-modal-backdrop"
+          onClick={() => !isPublishing && setShowConfirmPublish(false)}
+        >
+          <div
+            className="feedback-modal-card"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-publish-title"
+          >
+            <h3 id="confirm-publish-title" className="feedback-modal-title">
+              <Icons.Send />
+              <span>¿Publicar retroalimentación?</span>
+            </h3>
+            <p className="feedback-modal-text">
+              Se notificará a los integrantes de <strong>{groupName}</strong> y la retroalimentación
+              quedará visible de inmediato en su panel de estudiante.
+            </p>
+            {isDirty && (
+              <p className="feedback-modal-text" style={{ color: 'var(--badge-alert-text)' }}>
+                Nota: Se guardarán automáticamente tus últimos cambios antes de emitir la publicación.
+              </p>
             )}
-            <p style={{ margin: '0 0 14px', fontSize: '0.875rem', color: 'var(--text-secondary, #555)' }}>{httpResult.message}</p>
-            {httpResult.body && (
-              <pre style={{ backgroundColor: '#1e1e2e', color: '#cdd6f4', borderRadius: 8, padding: '12px 14px', fontSize: '0.781rem', overflowX: 'auto', margin: 0, lineHeight: 1.6 }}>{JSON.stringify(httpResult.body, null, 2)}</pre>
-            )}
-            <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setHttpResult(null)} style={{ backgroundColor: httpResult.code === 400 ? '#f59e0b' : '#ef4444', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer' }}>Cerrar</button>
+            <div className="feedback-modal-actions">
+              <button
+                type="button"
+                className="btn-secondary-save"
+                onClick={() => setShowConfirmPublish(false)}
+                disabled={isPublishing}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="btn-primary-action"
+                onClick={handleConfirmPublish}
+                disabled={isPublishing}
+              >
+                {isPublishing ? 'Publicando...' : 'Sí, publicar'}
+              </button>
             </div>
           </div>
         </div>

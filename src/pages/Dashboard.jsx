@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePaginatedList } from '../hooks/usePaginatedList';
-import { api } from '../lib/apiClient';
-import { calendarApi, groupsApi } from '../api';
+import { calendarApi, groupsApi, groupAnalysisApi } from '../api';
 import { useCourse } from '../context/CourseContext';
 import CourseSelector from '../components/CourseSelector';
 import { fromEpochMs, formatDate } from '../utils/date';
@@ -61,14 +60,26 @@ export default function Dashboard() {
           ? groupsResponse.content
           : Array.isArray(groupsResponse?.items) ? groupsResponse.items : [];
         if (active) setCourseGroupsState({ courseId: selectedCourseId, items: courseGroups });
-        const issueLists = await Promise.all(courseGroups.map(async (group) => {
-          const response = await api.get(`/groups/${group.id}/issues`);
-          return (response?.items || []).map((issue) => ({
-            ...issue,
-            groupName: issue.groupName || group.name,
-          }));
-        }));
-        if (active) setIssuesState({ courseId: selectedCourseId, items: issueLists.flat() });
+
+        // Consultamos un máximo de 5 grupos en paralelo con Promise.allSettled para cuidar cuotas de APIM
+        const targetGroups = courseGroups.slice(0, 5);
+        const settled = await Promise.allSettled(
+          targetGroups.map(async (group) => {
+            const response = await groupAnalysisApi.getIssues(group.id);
+            const rawItems = Array.isArray(response) ? response : (response?.items || []);
+            return rawItems.map((issue) => ({
+              ...issue,
+              groupName: issue.groupName || group.name,
+            }));
+          })
+        );
+
+        const flatIssues = settled
+          .filter((res) => res.status === 'fulfilled')
+          .flatMap((res) => res.value)
+          .sort((a, b) => (Number(b.date) || 0) - (Number(a.date) || 0));
+
+        if (active) setIssuesState({ courseId: selectedCourseId, items: flatIssues });
       } catch (err) {
         console.warn('Error al cargar issues en Dashboard:', err);
         if (active) setIssuesState({ courseId: selectedCourseId, items: [] });
@@ -304,7 +315,7 @@ export default function Dashboard() {
             <div className="upcoming-events-list">
               {eventsList.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.813rem', padding: '8px 0' }}>
-                  Sin eventos registrados en el mock.
+                  Sin eventos registrados.
                 </div>
               ) : (
                 eventsList.slice(0, 3).map((ev) => {
@@ -336,10 +347,15 @@ export default function Dashboard() {
               )}
             </div>
 
-            <a href="/calendar" className="widget-footer-link">
+            <button
+              type="button"
+              onClick={() => navigate('/calendar')}
+              className="widget-footer-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+            >
               <span>Ver calendario</span>
               <Icons.ChevronRight />
-            </a>
+            </button>
           </div>
 
           {/* Widget: Inconvenientes recientes */}
@@ -348,16 +364,16 @@ export default function Dashboard() {
             <div className="issues-mini-list">
               {issuesList.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.813rem', padding: '8px 0' }}>
-                  Sin inconvenientes registrados en el mock.
+                  Sin inconvenientes registrados.
                 </div>
               ) : (
-                issuesList.slice(0, 2).map((iss) => (
-                  <div key={iss.id} className="issue-mini-row">
+                issuesList.slice(0, 5).map((iss, idx) => (
+                  <div key={iss.id || `issue-${idx}`} className="issue-mini-row">
                     <div className="issue-icon-square">
                       <Icons.AlertTriangle />
                     </div>
                     <div className="issue-mini-info">
-                      <span className="issue-mini-title">{iss.type}</span>
+                      <span className="issue-mini-title">{iss.type || 'Inconveniente'}</span>
                       <span className="issue-mini-meta">{iss.groupName} · {formatDate(iss.date)}</span>
                     </div>
                   </div>
@@ -365,10 +381,15 @@ export default function Dashboard() {
               )}
             </div>
 
-            <a href="/issues" className="widget-footer-link">
+            <button
+              type="button"
+              onClick={() => navigate('/issues')}
+              className="widget-footer-link"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', width: '100%' }}
+            >
               <span>Ver todos</span>
               <Icons.ChevronRight />
-            </a>
+            </button>
           </div>
         </div>
       </div>

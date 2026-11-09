@@ -412,7 +412,17 @@ export default function Calendar() {
       }),
     };
   });
-  const sortedEvents = [...displayedEvents].sort((left, right) => (left.date || '').localeCompare(right.date || ''));
+  const sortedEvents = [...displayedEvents].sort((left, right) => {
+    const leftDate = left.date == null || left.date === '' ? null : Number(left.date);
+    const rightDate = right.date == null || right.date === '' ? null : Number(right.date);
+    const leftIsValid = leftDate !== null && Number.isFinite(leftDate);
+    const rightIsValid = rightDate !== null && Number.isFinite(rightDate);
+
+    if (!leftIsValid && !rightIsValid) return 0;
+    if (!leftIsValid) return 1;
+    if (!rightIsValid) return -1;
+    return leftDate - rightDate;
+  });
   const monthLabel = currentMonth.toLocaleDateString('es-CR', { month: 'long', year: 'numeric' });
   const changeMonth = (offset) => {
     setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + offset, 1));
@@ -896,83 +906,96 @@ export default function Calendar() {
 
       {/* Modal para Crear Nuevo Hito (POST) */}
       {isCreateModalOpen && (
-        <div className="modal-overlay-animated" onClick={() => setIsCreateModalOpen(false)}>
-          <div className="modal-content-animated" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">Agregar Nuevo Hito</h3>
-              <button type="button" onClick={() => setIsCreateModalOpen(false)} className="modal-close-btn">
-                ✕
-              </button>
+        createPortal(
+          <div className="modal-overlay-animated calendar-modal-overlay" onClick={() => setIsCreateModalOpen(false)}>
+            <div
+              className="modal-content-animated calendar-modal-content"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="create-event-modal-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3 className="modal-title" id="create-event-modal-title">Agregar Nuevo Hito</h3>
+                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="modal-close-btn" aria-label="Cerrar">
+                  ✕
+                </button>
+              </div>
+
+              {formError && (
+                <div role="alert" style={{ backgroundColor: 'var(--badge-alert-bg)', color: 'var(--badge-alert-text)', border: '1px solid var(--badge-alert-border)', padding: '10px 14px', borderRadius: 8, fontSize: '0.813rem' }}>
+                  {formError}
+                </div>
+              )}
+
+              <form onSubmit={handleCreateEvent} className="modal-form-body">
+                <div className="form-field">
+                  <label className="form-label" htmlFor="create-event-title">Título del hito</label>
+                  <input
+                    id="create-event-title"
+                    type="text"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                    placeholder="Ej. Entrega 3: Arquitectura"
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label" htmlFor="create-event-date">Fecha de entrega</label>
+                  <input
+                    id="create-event-date"
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label className="form-label" htmlFor="create-event-audience">Audiencia</label>
+                  <select
+                    id="create-event-audience"
+                    value={newAudience}
+                    onChange={(e) => setNewAudience(e.target.value)}
+                    className="form-input"
+                  >
+                    <option value="Todos los grupos">Todos los grupos</option>
+                    <option value="Grupos 1 y 3">Grupos 1 y 3</option>
+                    <option value="Grupos 2 y 4">Grupos 2 y 4</option>
+                  </select>
+                </div>
+
+                <div className="modal-footer-actions">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateModalOpen(false)}
+                    className="btn-secondary-action"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || selectedCourseId === null}
+                    className="btn-primary-action"
+                  >
+                    {isSubmitting ? 'Creando en APIM...' : 'Crear Hito (HTTP 201)'}
+                  </button>
+                </div>
+              </form>
             </div>
-
-            {formError && (
-              <div style={{ backgroundColor: 'var(--badge-alert-bg)', color: 'var(--badge-alert-text)', border: '1px solid var(--badge-alert-border)', padding: '10px 14px', borderRadius: 8, fontSize: '0.813rem' }}>
-                {formError}
-              </div>
-            )}
-
-            <form onSubmit={handleCreateEvent} className="modal-form-body">
-              <div className="form-field">
-                <label className="form-label">Título del hito</label>
-                <input
-                  type="text"
-                  value={newTitle}
-                  onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Ej. Entrega 3: Arquitectura"
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Fecha de entrega</label>
-                <input
-                  type="date"
-                  value={newDate}
-                  onChange={(e) => setNewDate(e.target.value)}
-                  className="form-input"
-                  required
-                />
-              </div>
-
-              <div className="form-field">
-                <label className="form-label">Audiencia</label>
-                <select
-                  value={newAudience}
-                  onChange={(e) => setNewAudience(e.target.value)}
-                  className="form-input"
-                >
-                  <option value="Todos los grupos">Todos los grupos</option>
-                  <option value="Grupos 1 y 3">Grupos 1 y 3</option>
-                  <option value="Grupos 2 y 4">Grupos 2 y 4</option>
-                </select>
-              </div>
-
-              <div className="modal-footer-actions">
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="btn-secondary-action"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || selectedCourseId === null}
-                  className="btn-primary-action"
-                >
-                  {isSubmitting ? 'Creando en APIM...' : 'Crear Hito (HTTP 201)'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+          </div>,
+          document.body,
+        )
       )}
 
       {/* Modal para Editar Hito (PUT) */}
       {editingEvent && (
-        <div className="modal-overlay-animated" onClick={() => setEditingEvent(null)}>
-          <div className="modal-content-animated" onClick={(e) => e.stopPropagation()}>
+        createPortal(
+          <div className="modal-overlay-animated calendar-modal-overlay" onClick={() => setEditingEvent(null)}>
+          <div className="modal-content-animated calendar-modal-content" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title">Editar Hito #{editingEvent.id}</h3>
               <button type="button" onClick={() => setEditingEvent(null)} className="modal-close-btn">
@@ -1037,13 +1060,16 @@ export default function Calendar() {
               </div>
             </form>
           </div>
-        </div>
+          </div>,
+          document.body,
+        )
       )}
 
       {/* Modal para Confirmar Eliminación (DELETE) */}
       {deletingEvent && (
-        <div className="modal-overlay-animated" onClick={() => setDeletingEvent(null)}>
-          <div className="modal-content-animated" onClick={(e) => e.stopPropagation()}>
+        createPortal(
+          <div className="modal-overlay-animated calendar-modal-overlay" onClick={() => setDeletingEvent(null)}>
+          <div className="modal-content-animated calendar-modal-content" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 className="modal-title" style={{ color: '#ef4444' }}>
                 Eliminar Hito
@@ -1084,7 +1110,9 @@ export default function Calendar() {
               </button>
             </div>
           </div>
-        </div>
+          </div>,
+          document.body,
+        )
       )}
 
       {/* Modal de Resultado HTTP */}

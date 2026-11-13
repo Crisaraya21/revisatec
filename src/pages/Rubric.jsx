@@ -143,7 +143,7 @@ export default function Rubric() {
       setCriteria(loadedCriteria);
     } else {
       console.error('Error al cargar rúbrica:', rubricRes.reason);
-      setRubricError('No se pudo cargar la rúbrica desde APIM.');
+      setRubricError('No se pudo cargar la rúbrica del curso.');
     }
     setRubricLoading(false);
 
@@ -271,26 +271,19 @@ export default function Rubric() {
     setSaveSuccessMsg('');
 
     try {
-      const promises = [];
-
-      // Guardar rúbrica si cambió
+      // Se guardan en secuencia: las tres secciones viven en el mismo documento
+      // del curso en MS2 y en paralelo pueden chocar al crearlo.
       if (JSON.stringify(criteria) !== baseline?.criteria) {
-        promises.push(courseConfigApi.saveRubric(selectedCourseId, { criteria }));
+        await courseConfigApi.saveRubric(selectedCourseId, { criteria });
       }
-
-      // Guardar indicaciones si cambiaron
       if (instructions !== baseline?.instructions) {
-        promises.push(courseConfigApi.saveInstructions(selectedCourseId, { text: instructions }));
+        await courseConfigApi.saveInstructions(selectedCourseId, { text: instructions });
       }
-
-      // Guardar scraping si cambió
       if (frequency !== baseline?.frequency || minReviewers !== baseline?.minReviewers) {
-        promises.push(courseConfigApi.saveScrapingConfig(selectedCourseId, { frequency, minReviewers }));
+        await courseConfigApi.saveScrapingConfig(selectedCourseId, { frequency, minReviewers });
       }
 
-      await Promise.all(promises);
-
-      setSaveSuccessMsg('Configuración guardada exitosamente en Azure APIM.');
+      setSaveSuccessMsg('Configuración guardada.');
       setBaseline({
         criteria: JSON.stringify(criteria),
         instructions,
@@ -306,12 +299,12 @@ export default function Rubric() {
         if (err.status === 400) {
           setSaveErrorMsg(err.message || 'Datos inválidos según el esquema de MS2 (400).');
         } else if (err.status === 404) {
-          setSaveErrorMsg('El curso seleccionado no fue encontrado en APIM (404).');
+          setSaveErrorMsg('El curso seleccionado no existe.');
         } else {
-          setSaveErrorMsg(`Error ${err.status} al guardar en APIM: ${err.message}`);
+          setSaveErrorMsg(`No se pudo guardar (error ${err.status}): ${err.message}`);
         }
       } else {
-        setSaveErrorMsg(err?.message || 'Error de conexión con Azure APIM.');
+        setSaveErrorMsg(err?.message || 'No se pudo conectar con el servidor.');
       }
     } finally {
       setIsSaving(false);
@@ -453,7 +446,7 @@ export default function Rubric() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => selectedCourseId && courseConfigApi.getRubric(selectedCourseId)}
+                  onClick={() => selectedCourseId && loadAllSections(selectedCourseId)}
                   className="btn-outline"
                   style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                 >
@@ -500,7 +493,7 @@ export default function Rubric() {
               <span className="section-label">Criterios configurados ({criteria.length})</span>
 
               {rubricLoading ? (
-                <div className="section-loading-spinner">Cargando criterios desde APIM…</div>
+                <div className="section-loading-spinner">Cargando criterios…</div>
               ) : criteria.length === 0 ? (
                 <div style={{ padding: '16px 0', color: 'var(--text-muted)', fontSize: '0.844rem', textAlign: 'center' }}>
                   Sin criterios registrados. Agrega uno usando el formulario inferior.
@@ -619,7 +612,7 @@ export default function Rubric() {
             )}
 
             {instructionsLoading ? (
-              <div className="section-loading-spinner">Cargando indicaciones desde APIM…</div>
+              <div className="section-loading-spinner">Cargando indicaciones…</div>
             ) : (
               <>
                 <textarea

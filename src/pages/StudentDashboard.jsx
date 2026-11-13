@@ -112,7 +112,7 @@ export default function StudentDashboard() {
             type="button"
             onClick={handleManualRefresh}
             className="btn-refresh-analysis"
-            title="Recargar datos desde Azure APIM"
+            title="Recargar datos"
           >
             <Icons.Refresh />
             <span>Actualizar</span>
@@ -307,7 +307,7 @@ export default function StudentDashboard() {
                       <span className="table-total-count">{issues.length} alerta(s)</span>
                     </div>
                     <span className="criteria-card-subtitle">
-                      Detectados por el analizador de Azure APIM en el historial de código
+                      Detectados en el historial de commits del repositorio
                     </span>
                   </div>
 
@@ -407,21 +407,27 @@ export default function StudentDashboard() {
                           padding: '10px 12px',
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div className="member-avatar">
+                        <div className="member-identity">
+                          <div className={`member-avatar${m.email === user?.email ? ' is-me' : ''}`}>
                             {m.name?.charAt(0)}
                           </div>
                           <div className="member-info">
                             <span className="member-name">{m.name}</span>
-                            <span style={{ fontSize: '0.688rem', color: 'var(--text-muted)' }}>
-                              {m.email}
-                            </span>
+                            <span className="member-email">{m.email}</span>
+                            {m.githubUser && (
+                              <a
+                                className="member-github"
+                                href={`https://github.com/${encodeURIComponent(m.githubUser)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`Perfil de GitHub de ${m.name}`}
+                              >
+                                <Icons.GitBranch />
+                                <span>{m.githubUser}</span>
+                              </a>
+                            )}
                           </div>
                         </div>
-
-                        <span style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--action-primary)' }}>
-                          {m.githubUser ? `@${m.githubUser}` : ''}
-                        </span>
                       </div>
                     ))}
                   </div>

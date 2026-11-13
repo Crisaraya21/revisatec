@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { groupsApi, groupAnalysisApi } from '../api';
 import { useCourse } from '../context/CourseContext';
 import { formatDate } from '../utils/date';
@@ -28,6 +29,7 @@ function resolveIssueType(rawType) {
 }
 
 export default function Issues() {
+  const navigate = useNavigate();
   const { selectedCourseId } = useCourse();
   const [issues, setIssues] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -108,7 +110,7 @@ export default function Issues() {
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
       console.error('Error al consultar inconvenientes en APIM:', err);
-      setApiError('Error al consultar inconvenientes desde Azure APIM (/groups/{id}/issues).');
+      setApiError('No se pudieron cargar los inconvenientes.');
     } finally {
       if (requestId === requestIdRef.current) setIsLoading(false);
     }
@@ -118,29 +120,6 @@ export default function Issues() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchIssuesFromApi();
   }, [fetchIssuesFromApi]);
-
-  const handleToggleStatus = (id) => {
-    setIssues((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              status: item.status === 'Sin resolver' ? 'Resuelto' : 'Sin resolver',
-            }
-          : item
-      )
-    );
-  };
-
-  const handleReviewIssue = (id) => {
-    setIssues((prev) =>
-      prev.map((item) =>
-        item.id === id
-          ? { ...item, status: item.status === 'Resuelto' ? 'Sin resolver' : 'Resuelto' }
-          : item
-      )
-    );
-  };
 
   // Contadores dinámicos
   const totalCount = issues.length;
@@ -258,7 +237,7 @@ export default function Issues() {
       {/* Estado Cargando */}
       {isLoading && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-          Consultando alertas e inconvenientes desde Azure APIM…
+          Cargando inconvenientes…
         </div>
       )}
 
@@ -390,14 +369,12 @@ export default function Issues() {
                       </td>
 
                       <td className="issues-status-cell">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(item.id)}
+                        {/* Estado de solo lectura: MS2 no expone una ruta para cambiarlo. */}
+                        <span
                           className={`issue-status-button ${
                             item.status === 'Sin resolver' ? 'is-open' : 'is-resolved'
                           }`}
-                          title="Alternar estado localmente"
-                          aria-label={`Cambiar estado de ${item.description}`}
+                          style={{ cursor: 'default' }}
                         >
                           {item.status === 'Sin resolver' ? (
                             <Icons.AlertTriangle />
@@ -405,17 +382,17 @@ export default function Issues() {
                             <Icons.CheckCircle />
                           )}
                           <span>{item.status}</span>
-                        </button>
+                        </span>
                       </td>
 
                       <td className="row-action-cell">
                         <button
                           type="button"
-                          onClick={() => handleReviewIssue(item.id)}
+                          onClick={() => navigate(`/groups/${item.groupId}`)}
                           className="btn-review-issue"
-                          aria-label={`Revisar o reabrir ${item.type}`}
+                          aria-label={`Abrir el detalle de ${item.group}`}
                         >
-                          <span>{item.status === 'Resuelto' ? 'Reabrir' : 'Revisar'}</span>
+                          <span>Ver grupo</span>
                           <Icons.ChevronRight />
                         </button>
                       </td>

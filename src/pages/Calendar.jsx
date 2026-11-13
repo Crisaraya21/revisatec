@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api, ApiError } from '../lib/apiClient';
 import { calendarApi } from '../api';
@@ -94,56 +94,6 @@ export default function Calendar() {
   const [formError, setFormError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // Estados locales optimistas para persistir operaciones CRUD sobre el mock estático de APIM
-  const [deletedEventIds, setDeletedEventIds] = useState(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem('revisatec_deleted_events') || '[]');
-    } catch {
-      return [];
-    }
-  });
-  const [createdEvents, setCreatedEvents] = useState(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem('revisatec_created_events') || '[]');
-    } catch {
-      return [];
-    }
-  });
-  const [editedEvents, setEditedEvents] = useState(() => {
-    try {
-      return JSON.parse(sessionStorage.getItem('revisatec_edited_events') || '{}');
-    } catch {
-      return {};
-    }
-  });
-
-  // Lista calculada combinando respuesta de Azure APIM con mutaciones del CRUD
-  const displayedEvents = useMemo(() => {
-    let list = (eventsList || []).filter((e) => !deletedEventIds.includes(e.id));
-    list = list.map((e) => (editedEvents[e.id] ? { ...e, ...editedEvents[e.id] } : e));
-    createdEvents.forEach((ce) => {
-      if (
-        String(ce.courseId) === String(selectedCourseId) &&
-        !list.some((e) => e.id === ce.id) &&
-        !deletedEventIds.includes(ce.id)
-      ) {
-        list = [ce, ...list];
-      }
-    });
-    return list;
-  }, [eventsList, deletedEventIds, editedEvents, createdEvents, selectedCourseId]);
-
-  // Restablecer datos originales del Mock en APIM
-  const handleResetMockData = () => {
-    setDeletedEventIds([]);
-    setCreatedEvents([]);
-    setEditedEvents({});
-    sessionStorage.removeItem('revisatec_deleted_events');
-    sessionStorage.removeItem('revisatec_created_events');
-    sessionStorage.removeItem('revisatec_edited_events');
-    handleManualRefresh();
-    showToast('success', 200, 'Datos Restablecidos', 'Se restableció el listado original de Azure APIM.');
-  };
 
   // Cargar eventos desde Azure APIM con paginación y búsqueda
   useEffect(() => {
@@ -234,17 +184,6 @@ export default function Calendar() {
         audience: newAudience,
         courseId: selectedCourseId,
       });
-      const newEventObj = {
-        id: res?.id || Date.now(),
-        title: res?.title || newTitle.trim(),
-        date: epochDate,
-        type: newType,
-        audience: newAudience,
-        courseId: selectedCourseId,
-      };
-      const updatedCreated = [newEventObj, ...createdEvents];
-      setCreatedEvents(updatedCreated);
-      sessionStorage.setItem('revisatec_created_events', JSON.stringify(updatedCreated));
       setNewTitle('');
       setIsCreateModalOpen(false);
       handleManualRefresh();
@@ -294,16 +233,6 @@ export default function Calendar() {
       });
 
       const updatedTitle = res?.title || editTitle;
-      const updatedItem = {
-        ...editingEvent,
-        title: updatedTitle,
-        date: epochDate,
-        audience: editAudience,
-        courseId: editingEvent.courseId ?? selectedCourseId,
-      };
-      const updatedEdited = { ...editedEvents, [editingEvent.id]: updatedItem };
-      setEditedEvents(updatedEdited);
-      sessionStorage.setItem('revisatec_edited_events', JSON.stringify(updatedEdited));
 
       setEditingEvent(null);
       handleManualRefresh();
@@ -332,10 +261,6 @@ export default function Calendar() {
     try {
       const res = await calendarApi.removeEvent(deletingEvent.id);
       const msg = res?.message || 'Evento eliminado';
-
-      const updatedDeleted = [...deletedEventIds, deletingEvent.id];
-      setDeletedEventIds(updatedDeleted);
-      sessionStorage.setItem('revisatec_deleted_events', JSON.stringify(updatedDeleted));
 
       setDeletingEvent(null);
       handleManualRefresh();
@@ -406,13 +331,13 @@ export default function Calendar() {
     return {
       date,
       isOther: date.getMonth() !== currentMonth.getMonth(),
-      events: displayedEvents.filter((event) => {
+      events: eventsList.filter((event) => {
         const eventDate = parseEventDate(event.date);
         return eventDate && formatDateKey(eventDate) === dateKey;
       }),
     };
   });
-  const sortedEvents = [...displayedEvents].sort((left, right) => {
+  const sortedEvents = [...eventsList].sort((left, right) => {
     const leftDate = left.date == null || left.date === '' ? null : Number(left.date);
     const rightDate = right.date == null || right.date === '' ? null : Number(right.date);
     const leftIsValid = leftDate !== null && Number.isFinite(leftDate);
@@ -492,23 +417,6 @@ export default function Calendar() {
         </div>
 
         <div className="calendar-header-actions">
-          {(deletedEventIds.length > 0 || createdEvents.length > 0 || Object.keys(editedEvents).length > 0) && (
-            <button
-              type="button"
-              onClick={handleResetMockData}
-              className="btn-refresh-analysis"
-              title="Restablecer hitos originales del Mock"
-              style={{
-                borderColor: '#fecaca',
-                backgroundColor: '#fff1f2',
-                color: '#e11d48',
-                fontWeight: 600,
-              }}
-            >
-              <Icons.Trash />
-              <span>Restablecer Mocks</span>
-            </button>
-          )}
           <button
             type="button"
             onClick={handleManualRefresh}
@@ -738,7 +646,7 @@ export default function Calendar() {
           <div className="table-title-area">
             <h2 className="table-main-title">Gestión de Hitos y Entregas (CRUD)</h2>
             <span className="table-total-count">
-              {displayedEvents.length} hito(s) registrados en Azure APIM
+              {totalRecords} hito(s) registrados en Azure APIM
             </span>
           </div>
 
@@ -782,14 +690,14 @@ export default function Calendar() {
                     Cargando hitos desde Azure APIM...
                   </td>
                 </tr>
-              ) : displayedEvents.length === 0 ? (
+              ) : eventsList.length === 0 ? (
                 <tr>
                   <td colSpan={4} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
                     No se encontraron hitos que coincidan con la búsqueda.
                   </td>
                 </tr>
               ) : (
-                displayedEvents.map((ev) => (
+                eventsList.map((ev) => (
                   <tr key={ev.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -853,7 +761,7 @@ export default function Calendar() {
         {/* Paginación */}
         <div className="table-pagination-footer">
           <span className="pagination-text">
-            Página {page} de {totalPages} &middot; Total: {displayedEvents.length} hitos
+            Página {page} de {totalPages} &middot; Total: {totalRecords} hitos
           </span>
           <div className="pagination-pages">
             <button

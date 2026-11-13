@@ -106,8 +106,8 @@ function MainAppShell() {
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
               style={{ cursor: 'pointer' }}
             >
-              <div className="profile-avatar">{user.avatar || (isStudent ? 'SP' : 'PR')}</div>
-              <span className="profile-name">{user.name || (isStudent ? 'Sofía P.' : 'Profesor')}</span>
+              <div className="profile-avatar">{user.avatar || (isStudent ? 'ES' : 'PR')}</div>
+              <span className="profile-name">{user.name || (isStudent ? 'Estudiante' : 'Profesor')}</span>
               <Icons.ChevronDown />
             </div>
 
@@ -133,7 +133,7 @@ function MainAppShell() {
                 <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border-default)', marginBottom: 4 }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Conectado como</span>
                   <strong style={{ fontSize: '0.844rem', color: 'var(--text-primary)' }}>
-                    {isStudent ? 'Estudiante (Sofía P.)' : 'Profesor'}
+                    {isStudent ? 'Estudiante' : 'Profesor'}
                   </strong>
                 </div>
 

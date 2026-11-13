@@ -2,6 +2,12 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
+function getInitials(name) {
+  const parts = name.split(/\s+/).filter(Boolean);
+  const initials = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : name.slice(0, 2);
+  return initials.toUpperCase();
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
@@ -34,15 +40,20 @@ export function AuthProvider({ children }) {
     });
   };
 
-  // Login con Google -> Estudiante
-  const loginAsStudent = (email = 'sofia@estudiantec.cr') => {
+  // Login con Google -> Estudiante. Nombre y correo vienen del perfil de Google;
+  // el grupo se resuelve después con GET /members/me (MS1).
+  const loginAsStudent = ({ name, email, picture } = {}) => {
+    const normalizedEmail = (email || '').trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('Google no devolvió un correo para la sesión.');
+    }
+    const displayName = (name || '').trim() || normalizedEmail.split('@')[0];
     setUser({
       role: 'student',
-      name: 'Sofía P.',
-      email: email || 'sofia@estudiantec.cr',
-      avatar: 'SP',
-      group: 'Grupo 2',
-      repo: 'revisatec/g2-web',
+      name: displayName,
+      email: normalizedEmail,
+      avatar: getInitials(displayName),
+      picture: picture || null,
     });
   };
 
@@ -50,12 +61,10 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // Cambio de vista para demostración: conserva la identidad real de la sesión.
   const toggleRole = () => {
-    if (user?.role === 'student') {
-      loginAsProfessor();
-    } else {
-      loginAsStudent();
-    }
+    if (!user) return;
+    setUser({ ...user, role: user.role === 'student' ? 'professor' : 'student' });
   };
 
   return (

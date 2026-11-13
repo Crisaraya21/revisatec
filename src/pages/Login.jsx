@@ -19,13 +19,30 @@ export default function Login() {
     navigate('/groups');
   };
 
+  const [googleError, setGoogleError] = useState(null);
+
   const handleGoogleLogin = useGoogleLogin({
-    onSuccess: () => {
-      // Login real con Google. Entra como Estudiante, datos vienen de los mocks.
-      loginAsStudent('sofia@estudiantec.cr');
-      navigate('/student');
+    onSuccess: async (tokenResponse) => {
+      // Login real con Google: se lee el perfil (nombre y correo) con el token de acceso.
+      setGoogleError(null);
+      try {
+        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        });
+        if (!res.ok) throw new Error(`Google respondió HTTP ${res.status}`);
+        const profile = await res.json();
+        if (!/@(estudiantec\.cr|itcr\.ac\.cr)$/i.test(profile.email || '')) {
+          setGoogleError('Usa tu cuenta institucional (@estudiantec.cr o @itcr.ac.cr).');
+          return;
+        }
+        loginAsStudent({ name: profile.name, email: profile.email, picture: profile.picture });
+        navigate('/student');
+      } catch (err) {
+        console.error('No se pudo leer el perfil de Google:', err);
+        setGoogleError('No se pudo obtener tu perfil de Google. Intenta de nuevo.');
+      }
     },
-    onError: () => console.log('Falló el login con Google'),
+    onError: () => setGoogleError('Falló el inicio de sesión con Google.'),
   });
 
   return (
@@ -110,6 +127,12 @@ export default function Login() {
             <Icons.Google />
             <span>Continuar con Google</span>
           </button>
+
+          {googleError && (
+            <p role="alert" style={{ margin: 0, fontSize: '0.813rem', color: 'var(--badge-alert-text)' }}>
+              {googleError}
+            </p>
+          )}
 
           <div className="login-security-notice">
             <span className="login-security-shield">

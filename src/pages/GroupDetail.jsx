@@ -4,6 +4,7 @@ import { groupsApi, groupAnalysisApi } from '../api';
 import { ApiError } from '../lib/apiClient';
 import { formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
+import GroupMembersCard from '../components/GroupMembersCard';
 import './GroupDetail.css';
 
 // Equivalencia para estados de síntesis de avance según el contrato MS2
@@ -16,7 +17,7 @@ const PROGRESS_STATUS_MAP = {
 export default function GroupDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const groupId = id || '1';
+  const groupId = id;
 
   const [group, setGroup] = useState(null);
   const [analysis, setAnalysis] = useState(null);
@@ -412,6 +413,9 @@ export default function GroupDetail() {
           )}
         </div>
       </div>
+
+      {/* ----------------- INTEGRANTES (MS1) ----------------- */}
+      <GroupMembersCard groupId={groupId} />
 
       {/* ----------------- TABLA INFERIOR: EVIDENCIAS ----------------- */}
       <div className="evidence-panel-card">

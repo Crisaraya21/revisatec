@@ -76,12 +76,17 @@ export function AuthProvider({ children }) {
    * Inicia sesión con el perfil de Google. Lanza ApiError(404) si el correo
    * no está registrado como profesor ni como integrante de un grupo.
    */
-  const loginWithGoogleProfile = useCallback(async ({ name, email, picture } = {}) => {
+  const loginWithGoogleProfile = useCallback(async ({ name, email, picture } = {}, { allowedRoles } = {}) => {
     const normalizedEmail = (email || '').trim().toLowerCase();
     if (!normalizedEmail) {
-      throw new Error('Google no devolvió un correo para la sesión.');
+      throw new Error('No se recibió un correo para la sesión.');
     }
     const identity = await identityApi.me(normalizedEmail);
+    if (allowedRoles && !allowedRoles.includes(identity.role)) {
+      const error = new Error('Este acceso no está permitido para el rol del usuario.');
+      error.code = 'ROLE_NOT_ALLOWED';
+      throw error;
+    }
     const session = buildSession(identity, { name, picture });
     setUser(session);
     return session;

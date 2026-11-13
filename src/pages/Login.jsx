@@ -16,13 +16,15 @@ export default function Login() {
   const [googleError, setGoogleError] = useState(null);
 
   // El rol (profesor o estudiante) lo decide MS1 con GET /me, no la pantalla.
-  const signIn = async (profile) => {
+  const signIn = async (profile, options) => {
     setIsSigningIn(true);
     try {
-      const session = await loginWithGoogleProfile(profile);
+      const session = await loginWithGoogleProfile(profile, options);
       navigate(session.role === 'professor' ? '/groups' : '/student');
     } catch (err) {
-      if (err instanceof ApiError && err.status === 404) {
+      if (err?.code === 'ROLE_NOT_ALLOWED') {
+        setGoogleError('Los profesores deben ingresar con el botón de Google.');
+      } else if (err instanceof ApiError && err.status === 404) {
         setGoogleError(`El correo ${profile.email} no está registrado en RevisaTEC. Pide al profesor que te agregue.`);
       } else {
         console.error('Error al iniciar sesión:', err);
@@ -33,12 +35,18 @@ export default function Login() {
     }
   };
 
-  // Solo en desarrollo local (npm run dev): permite probar con un correo registrado
-  // sin cuenta de Google. No existe en el sitio desplegado.
-  const handleDevLogin = (e) => {
+  // Acceso de estudiantes con su correo estudiantil (las cuentas del TEC son de
+  // Microsoft y no sirven con Google). Solo @estudiantec.cr y solo rol estudiante:
+  // un profesor nunca entra por aquí.
+  const handleStudentEmailLogin = (e) => {
     e.preventDefault();
     setGoogleError(null);
-    signIn({ email: email.trim() });
+    const value = email.trim().toLowerCase();
+    if (!value.endsWith('@estudiantec.cr')) {
+      setGoogleError('Usa tu correo estudiantil (@estudiantec.cr) o entra con Google.');
+      return;
+    }
+    signIn({ email: value }, { allowedRoles: ['student'] });
   };
 
   const handleGoogleLogin = useGoogleLogin({
@@ -93,11 +101,44 @@ export default function Login() {
               Inicia sesión en tu <span className="login-title-accent">cuenta</span>
             </h1>
             <p className="login-subtitle">
-              Profesores y estudiantes ingresan con su cuenta de Google.
+              Estudiantes: correo estudiantil o Gmail. Profesores: cuenta de Google.
             </p>
           </div>
 
-          {/* Botón Google: profesores y estudiantes */}
+          {/* Estudiantes con correo estudiantil (@estudiantec.cr) */}
+          <form onSubmit={handleStudentEmailLogin} className="login-form">
+            <div className="login-field-group">
+              <label htmlFor="student-email" className="login-label">
+                Accede con tu correo institucional
+              </label>
+              <div className="login-input-box">
+                <span className="login-input-icon">
+                  <Icons.Mail width={17} height={17} />
+                </span>
+                <input
+                  id="student-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="nombre@estudiantec.cr"
+                  className="login-input"
+                  required
+                />
+              </div>
+            </div>
+            <button type="submit" className="btn-login-primary" disabled={isSigningIn}>
+              <span>Iniciar sesión</span>
+              <span className="btn-arrow">→</span>
+            </button>
+          </form>
+
+          <div className="login-divider">
+            <span className="login-divider-line"></span>
+            <span className="login-divider-text">o</span>
+            <span className="login-divider-line"></span>
+          </div>
+
+          {/* Google: estudiantes con Gmail y profesores */}
           <button
             type="button"
             onClick={() => handleGoogleLogin()}
@@ -122,34 +163,6 @@ export default function Login() {
               Solo pueden entrar las cuentas que el profesor registró en RevisaTEC.
             </span>
           </div>
-
-          {import.meta.env.DEV && (
-            <form onSubmit={handleDevLogin} className="login-form">
-              <div className="login-field-group">
-                <label htmlFor="dev-email" className="login-label">
-                  Accede con tu correo institucional
-                </label>
-                <div className="login-input-box">
-                  <span className="login-input-icon">
-                    <Icons.Mail width={17} height={17} />
-                  </span>
-                  <input
-                    id="dev-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="nombre@estudiantec.cr"
-                    className="login-input"
-                    required
-                  />
-                </div>
-              </div>
-              <button type="submit" className="btn-login-primary" disabled={isSigningIn}>
-                <span>Entrar con este correo</span>
-                <span className="btn-arrow">→</span>
-              </button>
-            </form>
-          )}
         </div>
       </div>
 

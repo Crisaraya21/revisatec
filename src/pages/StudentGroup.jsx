@@ -1,130 +1,93 @@
 import { useState, useEffect } from 'react';
-import { api, ApiError } from '../lib/apiClient';
+import { ApiError } from '../lib/apiClient';
+import { groupAnalysisApi, groupsApi, membersApi } from '../api';
+import { useAuth } from '../context/AuthContext';
 import { useCourse } from '../context/CourseContext';
+import { useStudentGroup } from '../hooks/useStudentGroup';
+import { formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './StudentDashboard.css';
 
+const optional = (promise) => promise.catch(() => null);
+
 export default function StudentGroup() {
+  const { user } = useAuth();
   const { selectedCourse } = useCourse();
-  const [group, setGroup] = useState(null);
-  const [members, setMembers] = useState([]);
-  const [issues, setIssues] = useState([]);
-  const [milestones, setMilestones] = useState([]);
-  const [membersUnavailable, setMembersUnavailable] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const assignment = useStudentGroup();
+  const groupId = assignment.group?.id ?? null;
+
+  const [data, setData] = useState({ groupId: null, group: null, members: null, issues: [], milestones: [] });
   const [isEditing, setIsEditing] = useState(false);
   const [repoInput, setRepoInput] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [toast, setToast] = useState(null);
-  const [httpResult, setHttpResult] = useState(null);
 
   const showToast = (type, status, title, message) => {
     setToast({ type, status, title, message });
     setTimeout(() => setToast(null), 5000);
   };
 
-  const [reloadKey, setReloadKey] = useState(0);
-
   useEffect(() => {
+    if (groupId === null) return undefined;
     let isMounted = true;
-
-    async function loadGroupDetails() {
-      setIsLoading(true);
-      setApiError(null);
-      setMembersUnavailable(false);
-      try {
-        // 1. Datos del grupo
-        const res = await api.get('/groups/2');
+    Promise.all([
+      groupsApi.get(groupId),
+      optional(membersApi.list(groupId)),
+      optional(groupAnalysisApi.getIssues(groupId)),
+      optional(groupAnalysisApi.getReport(groupId)),
+    ])
+      .then(([groupRes, membersRes, issuesRes, reportRes]) => {
         if (!isMounted) return;
-        setGroup({
-          id: 2,
-          name: res.name || null,
-          repoUrl: res.repoUrl || '',
-          course: res.course || null,
-          avance: res.avance ?? 71,
+        setApiError(null);
+        setData({
+          groupId,
+          group: groupRes,
+          members: membersRes ? membersRes.members || [] : null,
+          issues: issuesRes?.items || [],
+          milestones: reportRes?.checklist || [],
         });
-        setRepoInput(res.repoUrl || '');
-
-        // 2. Integrantes
-        try {
-          const membersRes = await api.get('/groups/2/members');
-          if (isMounted) setMembers(membersRes?.members || []);
-        } catch (err) {
-          console.warn('No se pudieron cargar los integrantes del grupo:', err);
-          if (isMounted) {
-            setMembers([]);
-            setMembersUnavailable(true);
-          }
-        }
-
-        // 3. Inconvenientes reportados en el repo
-        try {
-          const issuesRes = await api.get('/groups/2/issues');
-          if (isMounted) setIssues(issuesRes?.items || []);
-        } catch (err) {
-          console.warn('No se pudieron cargar los issues:', err);
-          if (isMounted) setIssues([]);
-        }
-
-        // 4. Reporte de hitos
-        try {
-          const reportRes = await api.get('/groups/2/report');
-          if (isMounted) setMilestones(reportRes?.checklist || []);
-        } catch (err) {
-          console.warn('No se pudo cargar el reporte de hitos:', err);
-          if (isMounted) setMilestones([]);
-        }
-      } catch (err) {
+        setRepoInput(groupRes?.repoUrl || '');
+      })
+      .catch((err) => {
         if (!isMounted) return;
         console.error('Error al cargar datos del grupo:', err);
-        const code = err instanceof ApiError ? err.status : 500;
-        setApiError({
-          status: code,
-          message: err.message || 'Error de conexión con Azure APIM al cargar la información del grupo.',
-        });
-        setGroup(null);
-        setMembers([]);
-        setIssues([]);
-        setMilestones([]);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    }
+        setApiError({ status: err instanceof ApiError ? err.status : 500, message: err.message });
+      });
+    return () => { isMounted = false; };
+  }, [groupId, reloadKey]);
 
-    loadGroupDetails();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [reloadKey]);
+  const isLoading = assignment.status === 'loading' || (groupId !== null && data.groupId !== groupId && !apiError);
+  const group = assignment.status === 'assigned' && data.groupId === groupId ? data.group : null;
+  const members = group ? data.members || [] : [];
+  const membersUnavailable = group ? data.members === null : false;
+  const issues = group ? data.issues : [];
+  const milestones = group ? data.milestones : [];
+  const errorToShow = assignment.status === 'error' ? assignment.error : apiError;
 
   const handleManualRefresh = () => {
-    setIsLoading(true);
     setReloadKey((k) => k + 1);
   };
 
   const handleSaveRepo = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.put('/groups/2', {
+      const res = await groupsApi.update(group.id, {
         name: group.name,
         repoUrl: repoInput.trim(),
+        avance: group.avance,
+        estado: group.estado,
+        courseId: group.courseId,
       });
-      setGroup((prev) => ({ ...prev, repoUrl: res?.repoUrl || repoInput.trim() }));
+      setData((prev) => ({ ...prev, group: res || { ...prev.group, repoUrl: repoInput.trim() } }));
       setIsEditing(false);
-      showToast(
-        'success',
-        200,
-        'Repositorio Actualizado (HTTP 200 OK)',
-        'La URL del repositorio se sincronizó exitosamente en Azure APIM.'
-      );
+      showToast('success', 200, 'Repositorio actualizado', 'La URL del repositorio se guardó en MS1.');
     } catch (err) {
       console.error('Error al actualizar repo:', err);
       const code = err instanceof ApiError ? err.status : 400;
       showToast('error', code, `Error HTTP ${code}`, err.message || 'Error al actualizar repositorio.');
     }
   };
-
 
   return (
     <div className="student-dashboard-container">
@@ -164,10 +127,10 @@ export default function StudentGroup() {
               ? group.name || 'Mi Grupo'
               : isLoading
                 ? 'Cargando...'
-                : 'Grupo no disponible desde APIM'}
+                : 'Sin grupo asignado'}
           </h1>
           <span className="student-group-subtitle">
-            {group?.repoUrl ? group.repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '') : ''} &middot; {group?.course || selectedCourse?.name || 'Curso no disponible'}
+            {group?.repoUrl ? `${group.repoUrl.replace(/^https?:\/\/(www\.)?github\.com\//, '')} · ` : ''}{selectedCourse?.name || 'Curso no disponible'}
           </span>
         </div>
 
@@ -194,7 +157,7 @@ export default function StudentGroup() {
       </div>
 
       {/* Error API */}
-      {apiError && (
+      {errorToShow && (
         <div
           style={{
             backgroundColor: 'var(--badge-alert-bg)',
@@ -210,12 +173,9 @@ export default function StudentGroup() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icons.AlertTriangle />
             <span style={{ fontSize: '0.938rem', fontWeight: 700 }}>
-              Error HTTP {apiError.status}: {apiError.message}
+              Error HTTP {errorToShow.status}: {errorToShow.message}
             </span>
           </div>
-          <p style={{ fontSize: '0.813rem', margin: 0 }}>
-            Ley del proyecto: la pantalla refleja fielmente el error devuelto por Azure APIM.
-          </p>
           <button
             type="button"
             onClick={handleManualRefresh}
@@ -231,15 +191,25 @@ export default function StudentGroup() {
               cursor: 'pointer',
             }}
           >
-            Reintentar llamada a APIM
+            Reintentar
           </button>
         </div>
       )}
 
       {/* Cargando */}
-      {isLoading && (
+      {isLoading && !errorToShow && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-          Cargando información del grupo desde Azure APIM...
+          Cargando información del grupo...
+        </div>
+      )}
+
+      {assignment.status === 'unassigned' && (
+        <div className="criteria-card" style={{ textAlign: 'center', padding: 32 }}>
+          <h3 className="criteria-card-title">No estás asignado a un grupo en este curso</h3>
+          <span className="criteria-card-subtitle">
+            Tu correo {user?.email} no aparece en ningún grupo de {selectedCourse?.name || 'este curso'}.
+            Pide al profesor que te agregue.
+          </span>
         </div>
       )}
 
@@ -249,7 +219,7 @@ export default function StudentGroup() {
           <div className="criteria-card-header">
             <h3 className="criteria-card-title">Configuración del Repositorio de GitHub</h3>
             <span className="criteria-card-subtitle">
-              Sincronizado con el endpoint <code>PUT /groups/2</code> en Azure APIM
+              Se guarda en MS1 con <code>PUT /groups/{group.id}</code>
             </span>
           </div>
 
@@ -276,14 +246,14 @@ export default function StudentGroup() {
               className="btn-primary-action"
               style={{ padding: '10px 20px', borderRadius: 8 }}
             >
-              Guardar en Azure APIM
+              Guardar
             </button>
           </div>
         </form>
       )}
 
       {/* Contenido Principal */}
-      {!isLoading && !apiError && group && (
+      {!isLoading && !errorToShow && group && (
         <div className="student-main-grid">
           {/* Columna Izquierda: Datos, Repo e Inconvenientes */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -315,19 +285,19 @@ export default function StudentGroup() {
 
                 <div style={{ marginTop: 10 }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 8 }}>
-                    Integrantes del equipo ({members.length}) &middot; Obtenido de <code>GET /groups/2/members</code>
+                    Integrantes del equipo ({members.length})
                   </span>
                   {membersUnavailable ? (
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.844rem' }}>
-                      Integrantes no disponibles desde APIM.
+                      No se pudieron cargar los integrantes.
                     </span>
                   ) : members.length === 0 ? (
                     <span style={{ color: 'var(--text-muted)', fontSize: '0.844rem' }}>Sin integrantes registrados.</span>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {members.map((m, idx) => (
+                      {members.map((m) => (
                         <div
-                          key={idx}
+                          key={m.id}
                           style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -340,19 +310,19 @@ export default function StudentGroup() {
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div className="member-avatar">
-                              {m.initials || m.name?.charAt(0)}
+                              {m.name?.charAt(0)}
                             </div>
                             <div>
                               <span style={{ fontSize: '0.844rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>
                                 {m.name}
                               </span>
                               <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                {m.email} &middot; {m.role}
+                                {m.email}{m.email === user?.email ? ' · Tú' : ''}
                               </span>
                             </div>
                           </div>
                           <span style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--action-primary)' }}>
-                            {m.contribution}
+                            {m.githubUser ? `@${m.githubUser}` : ''}
                           </span>
                         </div>
                       ))}
@@ -371,7 +341,7 @@ export default function StudentGroup() {
                     <span className="table-total-count">{issues.length} detectados</span>
                   </div>
                   <span className="criteria-card-subtitle">
-                    Obtenido de <code>GET /groups/2/issues</code>
+                    Detectados por el análisis del repositorio
                   </span>
                 </div>
 
@@ -394,7 +364,7 @@ export default function StudentGroup() {
                           {iss.type}
                         </span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                          {iss.description} &middot; {iss.date}
+                          {iss.description} &middot; {formatDate(iss.date)}
                         </span>
                       </div>
                       <span
@@ -427,7 +397,7 @@ export default function StudentGroup() {
                   {group.avance === null || group.avance === undefined ? '—' : `${group.avance}%`}
                 </span>
                 <span style={{ display: 'block', fontSize: '0.781rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                  {group.avance === null || group.avance === undefined ? 'Avance no disponible desde APIM' : 'Calculado según rúbrica y entregas'}
+                  {group.avance === null || group.avance === undefined ? 'Avance no disponible' : `Estado: ${group.estado}`}
                 </span>
               </div>
             </div>
@@ -438,7 +408,7 @@ export default function StudentGroup() {
                 <div className="criteria-card-header">
                   <h3 className="criteria-card-title">Hitos del Proyecto</h3>
                   <span className="criteria-card-subtitle">
-                    Obtenido de <code>GET /groups/2/report</code>
+                    Reporte generado por el análisis del repositorio
                   </span>
                 </div>
 
@@ -449,7 +419,7 @@ export default function StudentGroup() {
                         <Icons.CheckCircle />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                           <span className="milestone-name">{m.name}</span>
-                          <span className="milestone-date">{m.date}</span>
+                          <span className="milestone-date">{typeof m.date === 'number' ? formatDate(m.date) : m.date}</span>
                         </div>
                       </div>
                       <span className={`milestone-badge ${m.status}`}>
@@ -465,31 +435,6 @@ export default function StudentGroup() {
       )}
 
 
-      {httpResult && (
-        <div onClick={() => setHttpResult(null)} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ backgroundColor: 'var(--card-bg, #fff)', borderRadius: 14, padding: '28px 28px 24px', maxWidth: 480, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: httpResult.code === 400 ? '1.5px solid #f59e0b' : '1.5px solid #ef4444' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ backgroundColor: httpResult.code === 400 ? '#fef3c7' : '#fee2e2', color: httpResult.code === 400 ? '#b45309' : '#991b1b', fontWeight: 800, fontSize: '1.1rem', borderRadius: 8, padding: '4px 12px', fontFamily: 'monospace' }}>HTTP {httpResult.code}</span>
-                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary, #111)' }}>{httpResult.label}</span>
-              </div>
-              <button type="button" onClick={() => setHttpResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-secondary, #666)', lineHeight: 1 }}>✕</button>
-            </div>
-            {httpResult.endpoint && (
-              <div style={{ marginBottom: 12, padding: '6px 12px', backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 6, fontSize: '0.781rem', fontFamily: 'monospace', color: 'var(--text-secondary, #444)' }}>
-                <strong>Solicitud a APIM:</strong> {httpResult.endpoint}
-              </div>
-            )}
-            <p style={{ margin: '0 0 14px', fontSize: '0.875rem', color: 'var(--text-secondary, #555)' }}>{httpResult.message}</p>
-            {httpResult.body && (
-              <pre style={{ backgroundColor: '#1e1e2e', color: '#cdd6f4', borderRadius: 8, padding: '12px 14px', fontSize: '0.781rem', overflowX: 'auto', margin: 0, lineHeight: 1.6 }}>{JSON.stringify(httpResult.body, null, 2)}</pre>
-            )}
-            <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setHttpResult(null)} style={{ backgroundColor: httpResult.code === 400 ? '#f59e0b' : '#ef4444', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer' }}>Cerrar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

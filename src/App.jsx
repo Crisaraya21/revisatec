@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import { Icons } from './components/Icons';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -22,7 +22,7 @@ import StudentFeedback from './pages/StudentFeedback';
 import './App.css';
 
 function MainAppShell() {
-  const { user, isProfessor, isStudent, logout, toggleRole } = useAuth();
+  const { user, isProfessor, isStudent, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,16 +38,6 @@ function MainAppShell() {
     logout();
     setProfileMenuOpen(false);
     navigate('/login');
-  };
-
-  const handleSwitchRole = () => {
-    toggleRole();
-    setProfileMenuOpen(false);
-    if (isProfessor) {
-      navigate('/student');
-    } else {
-      navigate('/groups');
-    }
   };
 
   return (
@@ -106,8 +96,8 @@ function MainAppShell() {
               onClick={() => setProfileMenuOpen(!profileMenuOpen)}
               style={{ cursor: 'pointer' }}
             >
-              <div className="profile-avatar">{user.avatar || (isStudent ? 'SP' : 'PR')}</div>
-              <span className="profile-name">{user.name || (isStudent ? 'Sofía P.' : 'Profesor')}</span>
+              <div className="profile-avatar">{user.avatar || (isStudent ? 'ES' : 'PR')}</div>
+              <span className="profile-name">{user.name || (isStudent ? 'Estudiante' : 'Profesor')}</span>
               <Icons.ChevronDown />
             </div>
 
@@ -133,31 +123,12 @@ function MainAppShell() {
                 <div style={{ padding: '6px 12px', borderBottom: '1px solid var(--border-default)', marginBottom: 4 }}>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Conectado como</span>
                   <strong style={{ fontSize: '0.844rem', color: 'var(--text-primary)' }}>
-                    {isStudent ? 'Estudiante (Sofía P.)' : 'Profesor'}
+                    {isStudent ? 'Estudiante' : 'Profesor'}
                   </strong>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', overflowWrap: 'anywhere' }}>
+                    {user.email}
+                  </span>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleSwitchRole}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    textAlign: 'left',
-                    padding: '8px 12px',
-                    borderRadius: 6,
-                    fontSize: '0.813rem',
-                    color: 'var(--text-primary)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                  className="dropdown-menu-item"
-                >
-                  <Icons.User />
-                  <span>{isStudent ? 'Cambiar a Profesor' : 'Cambiar a Estudiante'}</span>
-                </button>
 
                 <button
                   type="button"
@@ -349,20 +320,28 @@ function MainAppShell() {
         <main className="page-wrapper">
           <ErrorBoundary>
             <Routes>
-              {/* Rutas de Profesor */}
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/groups" element={<Groups />} />
-              <Route path="/groups/:id" element={<GroupDetail />} />
-              <Route path="/rubric" element={<Rubric />} />
-              <Route path="/feedback" element={<Feedback />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/issues" element={<Issues />} />
+              {/* Rutas de Profesor: solo existen si MS1 dice que el correo es de un profesor */}
+              {isProfessor && (
+                <>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/groups" element={<Groups />} />
+                  <Route path="/groups/:id" element={<GroupDetail />} />
+                  <Route path="/rubric" element={<Rubric />} />
+                  <Route path="/feedback" element={<Feedback />} />
+                  <Route path="/calendar" element={<Calendar />} />
+                  <Route path="/issues" element={<Issues />} />
+                </>
+              )}
 
               {/* Rutas de Estudiante */}
-              <Route path="/student" element={<StudentDashboard />} />
-              <Route path="/student/group" element={<StudentGroup />} />
-              <Route path="/student/feedback" element={<StudentFeedback />} />
-              <Route path="/student/calendar" element={<Calendar />} />
+              {isStudent && (
+                <>
+                  <Route path="/student" element={<StudentDashboard />} />
+                  <Route path="/student/group" element={<StudentGroup />} />
+                  <Route path="/student/feedback" element={<StudentFeedback />} />
+                  <Route path="/student/calendar" element={<Calendar readOnly />} />
+                </>
+              )}
 
               {/* Redirección por defecto */}
               <Route
@@ -456,9 +435,7 @@ function MainAppShell() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <MainAppShell />
-      </AuthProvider>
+      <MainAppShell />
     </BrowserRouter>
   );
 }

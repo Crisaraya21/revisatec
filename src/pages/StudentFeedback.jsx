@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useCourse } from '../context/CourseContext';
+import { useStudentGroup } from '../hooks/useStudentGroup';
 import { groupAnalysisApi } from '../api';
 import { ApiError } from '../lib/apiClient';
 import { formatDate } from '../utils/date';
@@ -9,20 +11,21 @@ import './StudentDashboard.css';
 
 export default function StudentFeedback() {
   const { user } = useAuth();
-  const studentGroupId = user?.groupId || (user?.group ? parseInt(user.group.replace(/\D/g, ''), 10) : 2) || 2;
+  const { selectedCourse } = useCourse();
+  const [reloadKey, setReloadKey] = useState(0);
+  const assignment = useStudentGroup();
+  const studentGroupId = assignment.group?.id ?? null;
 
   const [feedbackData, setFeedbackData] = useState(null);
   const [analysisData, setAnalysisData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loadedGroupId, setLoadedGroupId] = useState(null);
   const [apiError, setApiError] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    if (studentGroupId === null) return undefined;
     let isMounted = true;
 
     async function loadStudentData() {
-      setIsLoading(true);
-      setApiError(null);
 
       const [fbResult, analysisResult] = await Promise.allSettled([
         groupAnalysisApi.getFeedback(studentGroupId),
@@ -31,6 +34,7 @@ export default function StudentFeedback() {
 
       if (!isMounted) return;
 
+      setApiError(null);
       if (fbResult.status === 'fulfilled') {
         setFeedbackData(fbResult.value);
       } else {
@@ -50,7 +54,7 @@ export default function StudentFeedback() {
         setAnalysisData(null);
       }
 
-      setIsLoading(false);
+      setLoadedGroupId(studentGroupId);
     }
 
     loadStudentData();
@@ -64,8 +68,9 @@ export default function StudentFeedback() {
     setReloadKey((k) => k + 1);
   };
 
+  const isLoading = assignment.status === 'loading' || (studentGroupId !== null && loadedGroupId !== studentGroupId);
   const isPublished = feedbackData?.status === 'published';
-  const groupName = feedbackData?.groupName || user?.group || `Grupo ${studentGroupId}`;
+  const groupName = feedbackData?.groupName || assignment.group?.name || 'Sin grupo';
   const deliveryTitle = feedbackData?.deliveryTitle || 'Entrega de proyecto';
   const score = feedbackData?.score ?? analysisData?.score ?? null;
   const criteria = Array.isArray(analysisData?.criteria) ? analysisData.criteria : [];
@@ -126,7 +131,19 @@ export default function StudentFeedback() {
         </div>
       </div>
 
+      {/* Estudiante sin grupo en el curso seleccionado */}
+      {assignment.status === 'unassigned' && (
+        <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
+          Tu correo {user?.email} no aparece en ningún grupo de {selectedCourse?.name || 'este curso'}.
+        </div>
+      )}
+
       {/* Manejo de Error */}
+      {assignment.status === 'error' && (
+        <div role="alert" style={{ color: 'var(--badge-alert-text)', fontWeight: 600 }}>
+          Error HTTP {assignment.error?.status}: {assignment.error?.message}
+        </div>
+      )}
       {apiError && (
         <div
           role="alert"
@@ -147,14 +164,14 @@ export default function StudentFeedback() {
       )}
 
       {/* Cargando */}
-      {isLoading && (
+      {isLoading && assignment.status !== 'error' && (
         <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
           Cargando retroalimentación de tu grupo...
         </div>
       )}
 
       {/* Contenido si AÚN NO ESTÁ PUBLICADA */}
-      {!isLoading && !apiError && !isPublished && (
+      {!isLoading && !apiError && studentGroupId !== null && !isPublished && (
         <div
           style={{
             backgroundColor: 'var(--bg-card)',
@@ -202,7 +219,7 @@ export default function StudentFeedback() {
       )}
 
       {/* Contenido Principal CUANDO ESTÁ PUBLICADA (Solo lectura) */}
-      {!isLoading && !apiError && isPublished && feedbackData && (
+      {!isLoading && !apiError && studentGroupId !== null && isPublished && feedbackData && (
         <>
           {/* Banner Resumen de Calificación Oficial */}
           <div

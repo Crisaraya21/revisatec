@@ -37,7 +37,7 @@ function CalendarEventRow({ event }) {
   );
 }
 
-export default function Calendar() {
+export default function Calendar({ readOnly = false }) {
   const { selectedCourseId } = useCourse();
   // Lista de eventos cargados en vivo desde Azure APIM
   const [eventsList, setEventsList] = useState([]);
@@ -426,18 +426,20 @@ export default function Calendar() {
             <Icons.Refresh />
             <span>Actualizar</span>
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setFormError(null);
-              setIsCreateModalOpen(true);
-            }}
-            disabled={selectedCourseId === null}
-            className="btn-new-event"
-          >
-            <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span>
-            <span>Nuevo hito</span>
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => {
+                setFormError(null);
+                setIsCreateModalOpen(true);
+              }}
+              disabled={selectedCourseId === null}
+              className="btn-new-event"
+            >
+              <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span>
+              <span>Nuevo hito</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -714,6 +716,7 @@ export default function Calendar() {
                       </span>
                     </td>
                     <td style={{ textAlign: 'right' }}>
+                      {!readOnly && (
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                         <button
                           type="button"
@@ -750,6 +753,7 @@ export default function Calendar() {
                           Eliminar
                         </button>
                       </div>
+                      )}
                     </td>
                   </tr>
                 ))

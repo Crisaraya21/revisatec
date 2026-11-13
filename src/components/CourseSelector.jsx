@@ -16,9 +16,7 @@ export default function CourseSelector() {
   const triggerRef = useRef(null);
   const optionRefs = useRef([]);
 
-  const unavailableMessage = error
-    ? 'No se pudieron cargar los cursos'
-    : 'No hay cursos disponibles';
+  const unavailableMessage = error || 'No hay cursos disponibles';
   const selectedIndex = courses.findIndex(
     (course) => String(course.id) === String(selectedCourseId)
   );

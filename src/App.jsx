@@ -18,6 +18,7 @@ import Issues from './pages/Issues';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentGroup from './pages/StudentGroup';
 import StudentFeedback from './pages/StudentFeedback';
+import Settings from './pages/Settings';
 
 import './App.css';
 
@@ -129,6 +130,32 @@ function MainAppShell() {
                     {user.email}
                   </span>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileMenuOpen(false);
+                    navigate('/settings');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    textAlign: 'left',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    fontSize: '0.813rem',
+                    color: 'var(--text-primary)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                  }}
+                  className="dropdown-menu-item"
+                >
+                  <Icons.Settings width={16} height={16} />
+                  <span>Configuración</span>
+                </button>
 
                 <button
                   type="button"
@@ -285,6 +312,18 @@ function MainAppShell() {
                   </NavLink>
                 </>
               )}
+
+              {/* Acceso a Configuración para ambos roles */}
+              <NavLink
+                to="/settings"
+                className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
+                title="Configuración"
+              >
+                <div className="sidebar-link-content">
+                  <Icons.Settings />
+                  <span>Configuración</span>
+                </div>
+              </NavLink>
             </nav>
           </div>
 
@@ -344,6 +383,9 @@ function MainAppShell() {
               )}
 
               {/* Redirección por defecto */}
+              {/* Ruta accesible para ambos roles */}
+              <Route path="/settings" element={<Settings />} />
+
               <Route
                 path="*"
                 element={<Navigate to={isStudent ? '/student' : '/groups'} replace />}

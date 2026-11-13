@@ -139,7 +139,7 @@ export default function StudentGroup() {
             type="button"
             onClick={handleManualRefresh}
             className="btn-refresh-analysis"
-            title="Recargar datos desde Azure APIM"
+            title="Recargar datos"
           >
             <Icons.Refresh />
             <span>Actualizar</span>

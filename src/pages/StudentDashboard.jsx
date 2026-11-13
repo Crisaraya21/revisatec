@@ -112,7 +112,7 @@ export default function StudentDashboard() {
             type="button"
             onClick={handleManualRefresh}
             className="btn-refresh-analysis"
-            title="Recargar datos desde Azure APIM"
+            title="Recargar datos"
           >
             <Icons.Refresh />
             <span>Actualizar</span>
@@ -307,7 +307,7 @@ export default function StudentDashboard() {
                       <span className="table-total-count">{issues.length} alerta(s)</span>
                     </div>
                     <span className="criteria-card-subtitle">
-                      Detectados por el analizador de Azure APIM en el historial de código
+                      Detectados en el historial de commits del repositorio
                     </span>
                   </div>
 

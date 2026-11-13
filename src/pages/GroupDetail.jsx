@@ -140,7 +140,7 @@ export default function GroupDetail() {
           </div>
 
           <h2 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-            Error al consultar grupo en Azure APIM
+            No se pudo cargar el grupo
           </h2>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '480px' }}>
             {apiError.message}
@@ -163,7 +163,7 @@ export default function GroupDetail() {
     return (
       <div className="group-detail-page">
         <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-muted)' }}>
-          Cargando análisis y detalle del grupo desde APIM…
+          Cargando el detalle del grupo…
         </div>
       </div>
     );
@@ -236,7 +236,7 @@ export default function GroupDetail() {
           <button
             type="button"
             className="btn-primary-action"
-            onClick={() => navigate('/feedback')}
+            onClick={() => navigate('/feedback', { state: { groupId } })}
           >
             <Icons.Feedback />
             <span>Dar retroalimentación</span>

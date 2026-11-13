@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { api, ApiError } from '../lib/apiClient';
-import { calendarApi } from '../api';
+import { ApiError } from '../lib/apiClient';
+import { calendarApi, groupsApi } from '../api';
 import { useCourse } from '../context/CourseContext';
 import { fromEpochMs, toEpochMs, formatDate, toInputValue } from '../utils/date';
 import { Icons } from '../components/Icons';
@@ -58,14 +58,8 @@ export default function Calendar({ readOnly = false }) {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [hoveredDay, setHoveredDay] = useState(null);
 
-  // Estados de toggles para avisos automáticos (Figma)
-  const [notifWeekly, setNotifWeekly] = useState(true);
-  const [notifDeadline, setNotifDeadline] = useState(true);
-  const [notifAdvance, setNotifAdvance] = useState(false);
-
   // Notificaciones Toast para feedback visual de estados HTTP
   const [toast, setToast] = useState(null);
-  const [httpResult, setHttpResult] = useState(null);
 
   const showToast = (type, code, title, message) => {
     setToast({ type, code, title, message });
@@ -81,6 +75,12 @@ export default function Calendar({ readOnly = false }) {
   const [newDate, setNewDate] = useState(() => formatDateKey(new Date()));
   const newType = 'blue';
   const [newAudience, setNewAudience] = useState('Todos los grupos');
+  // Grupos del curso para el campo Audiencia (vienen de MS1).
+  const [courseGroups, setCourseGroups] = useState({ courseId: null, items: [] });
+  const audienceOptions = [
+    'Todos los grupos',
+    ...(Object.is(courseGroups.courseId, selectedCourseId) ? courseGroups.items.map((g) => g.name) : []),
+  ];
 
   // 2. Editar Evento (PUT)
   const [editingEvent, setEditingEvent] = useState(null);
@@ -126,7 +126,7 @@ export default function Calendar({ readOnly = false }) {
         const code = err instanceof ApiError ? err.status : 500;
         setApiError({
           status: code,
-          message: err.message || 'Error de conexión con Azure APIM (/calendar/events).',
+          message: err.message || 'No se pudieron cargar los hitos del curso.',
         });
         setEventsList([]);
         setTotalRecords(0);
@@ -141,6 +141,19 @@ export default function Calendar({ readOnly = false }) {
       isMounted = false;
     };
   }, [page, search, reloadKey, selectedCourseId]);
+
+  useEffect(() => {
+    if (selectedCourseId === null || readOnly) return undefined;
+    let active = true;
+    groupsApi.list({ page: 1, pageSize: 100, courseId: selectedCourseId })
+      .then((res) => {
+        if (active) setCourseGroups({ courseId: selectedCourseId, items: Array.isArray(res?.items) ? res.items : [] });
+      })
+      .catch(() => {
+        if (active) setCourseGroups({ courseId: selectedCourseId, items: [] });
+      });
+    return () => { active = false; };
+  }, [selectedCourseId, readOnly]);
 
   const handleManualRefresh = () => {
     setIsLoading(true);
@@ -225,9 +238,11 @@ export default function Calendar({ readOnly = false }) {
 
     try {
       const epochDate = toEpochMs(editDate);
+      // MS1 exige type en el PUT; se conserva el tipo actual del hito.
       const res = await calendarApi.updateEvent(editingEvent.id, {
         title: editTitle.trim(),
         date: epochDate,
+        type: editingEvent.type || 'blue',
         audience: editAudience,
         courseId: editingEvent.courseId ?? selectedCourseId,
       });
@@ -285,36 +300,6 @@ export default function Calendar({ readOnly = false }) {
   // 100% Dependiente de Azure APIM: si APIM se desconecta, la llamada falla
   // ----------------------------------------------------
 
-  const handleSimulateError404 = async () => {
-    try {
-      const res = await api.get('/recurso-calendario-inexistente');
-      setHttpResult({
-        code: 404,
-        label: 'Not Found',
-        endpoint: 'GET /recurso-calendario-inexistente',
-        message: 'Respuesta recibida desde Azure APIM.',
-        body: res,
-      });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setHttpResult({
-          code: err.status,
-          label: 'Not Found',
-          endpoint: 'GET /recurso-calendario-inexistente',
-          message: err.message,
-          body: err.body,
-        });
-      } else {
-        console.error('Error de conexión con Azure APIM:', err);
-        showToast(
-          'error',
-          503,
-          'Sin Conexión con APIM',
-          'No se pudo conectar con Azure APIM. El servicio se encuentra inactivo.'
-        );
-      }
-    }
-  };
 
   const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
 
@@ -413,7 +398,7 @@ export default function Calendar({ readOnly = false }) {
       <div className="calendar-header">
         <div className="calendar-header-left">
           <h1 className="calendar-title">Calendario y Entregas</h1>
-          <span className="calendar-meta">Gestión de hitos sincronizada con Azure APIM</span>
+          <span className="calendar-meta">Hitos y fechas de entrega del curso</span>
         </div>
 
         <div className="calendar-header-actions">
@@ -421,7 +406,7 @@ export default function Calendar({ readOnly = false }) {
             type="button"
             onClick={handleManualRefresh}
             className="btn-refresh-analysis"
-            title="Recargar eventos desde APIM"
+            title="Recargar hitos"
           >
             <Icons.Refresh />
             <span>Actualizar</span>
@@ -463,9 +448,6 @@ export default function Calendar({ readOnly = false }) {
               Error HTTP {apiError.status}: {apiError.message}
             </span>
           </div>
-          <p style={{ fontSize: '0.813rem', margin: 0 }}>
-            Ley del proyecto: la pantalla muestra el error real de Azure APIM en lugar de datos simulados inventados.
-          </p>
           <button
             type="button"
             onClick={handleManualRefresh}
@@ -545,14 +527,10 @@ export default function Calendar({ readOnly = false }) {
             {upcomingEvents.length > 0 ? upcomingEvents.map((event) => (
               <CalendarEventRow key={event.id || `${event.date}-${event.title}`} event={event} />
             )) : (
-              <p className="event-subtitle">No hay eventos disponibles desde APIM.</p>
+              <p className="event-subtitle">No hay hitos en este curso.</p>
             )}
           </div>
 
-          <a href="#" onClick={(e) => e.preventDefault()} className="widget-footer-link">
-            <span>Ver mes completo</span>
-            <Icons.ChevronRight />
-          </a>
         </div>
         {/* Columna Derecha de Widgets */}
         <div className="calendar-right-widgets">
@@ -563,52 +541,11 @@ export default function Calendar({ readOnly = false }) {
               {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 3).map((event) => (
                 <CalendarEventRow key={event.id || `${event.date}-${event.title}`} event={event} />
               )) : (
-                <p className="event-subtitle">No hay eventos disponibles desde APIM.</p>
+                <p className="event-subtitle">No hay hitos en este curso.</p>
               )}
             </div>
           </div>
 
-          {/* Widget: Avisos automáticos con Toggles iOS */}
-          <div className="auto-notifications-card">
-            <h3 className="auto-notifications-title">Avisos automáticos</h3>
-            <div className="toggles-list">
-              <div className="toggle-row">
-                <span className="toggle-label">Resumen semanal al profesor</span>
-                <label className="switch-toggle">
-                  <input
-                    type="checkbox"
-                    checked={notifWeekly}
-                    onChange={(e) => setNotifWeekly(e.target.checked)}
-                  />
-                  <span className="slider-round"></span>
-                </label>
-              </div>
-
-              <div className="toggle-row">
-                <span className="toggle-label">Aviso al vencer un plazo</span>
-                <label className="switch-toggle">
-                  <input
-                    type="checkbox"
-                    checked={notifDeadline}
-                    onChange={(e) => setNotifDeadline(e.target.checked)}
-                  />
-                  <span className="slider-round"></span>
-                </label>
-              </div>
-
-              <div className="toggle-row">
-                <span className="toggle-label">Avisar a estudiantes 3 días antes</span>
-                <label className="switch-toggle">
-                  <input
-                    type="checkbox"
-                    checked={notifAdvance}
-                    onChange={(e) => setNotifAdvance(e.target.checked)}
-                  />
-                  <span className="slider-round"></span>
-                </label>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -648,7 +585,7 @@ export default function Calendar({ readOnly = false }) {
           <div className="table-title-area">
             <h2 className="table-main-title">Gestión de Hitos y Entregas (CRUD)</h2>
             <span className="table-total-count">
-              {totalRecords} hito(s) registrados en Azure APIM
+              {totalRecords} hito(s) registrados
             </span>
           </div>
 
@@ -689,7 +626,7 @@ export default function Calendar({ readOnly = false }) {
               {isLoading ? (
                 <tr>
                   <td colSpan={4} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
-                    Cargando hitos desde Azure APIM...
+                    Cargando hitos...
                   </td>
                 </tr>
               ) : eventsList.length === 0 ? (
@@ -731,7 +668,7 @@ export default function Calendar({ readOnly = false }) {
                             fontSize: '0.75rem',
                             fontWeight: 600,
                           }}
-                          title="Editar hito (PUT)"
+                          title="Editar hito"
                         >
                           Editar
                         </button>
@@ -748,7 +685,7 @@ export default function Calendar({ readOnly = false }) {
                             fontSize: '0.75rem',
                             fontWeight: 600,
                           }}
-                          title="Eliminar hito (DELETE)"
+                          title="Eliminar hito"
                         >
                           Eliminar
                         </button>
@@ -798,23 +735,6 @@ export default function Calendar({ readOnly = false }) {
         </div>
       </div>
 
-      {/* Barra de Pruebas de Estados HTTP (Cumplimiento de la Ley) */}
-      <div className="http-simulation-bar">
-        <div className="http-sim-label">
-          <Icons.AlertTriangle />
-          <span>Prueba de Respuesta de Error de Azure APIM:</span>
-        </div>
-        <div className="http-sim-buttons">
-          <button
-            type="button"
-            onClick={handleSimulateError404}
-            className="btn-test-http danger"
-            title="Llama al mock para comprobar el manejo visual de HTTP 404 real"
-          >
-            Probar Error 404 (Not Found en APIM)
-          </button>
-        </div>
-      </div>
 
       {/* Modal para Crear Nuevo Hito (POST) */}
       {isCreateModalOpen && (
@@ -874,9 +794,9 @@ export default function Calendar({ readOnly = false }) {
                     onChange={(e) => setNewAudience(e.target.value)}
                     className="form-input"
                   >
-                    <option value="Todos los grupos">Todos los grupos</option>
-                    <option value="Grupos 1 y 3">Grupos 1 y 3</option>
-                    <option value="Grupos 2 y 4">Grupos 2 y 4</option>
+                    {audienceOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -893,7 +813,7 @@ export default function Calendar({ readOnly = false }) {
                     disabled={isSubmitting || selectedCourseId === null}
                     className="btn-primary-action"
                   >
-                    {isSubmitting ? 'Creando en APIM...' : 'Crear Hito (HTTP 201)'}
+                    {isSubmitting ? 'Creando...' : 'Crear hito'}
                   </button>
                 </div>
               </form>
@@ -945,13 +865,17 @@ export default function Calendar({ readOnly = false }) {
               </div>
 
               <div className="form-field">
-                <label className="form-label">Audiencia</label>
-                <input
-                  type="text"
+                <label className="form-label" htmlFor="edit-event-audience">Audiencia</label>
+                <select
+                  id="edit-event-audience"
                   value={editAudience}
                   onChange={(e) => setEditAudience(e.target.value)}
                   className="form-input"
-                />
+                >
+                  {(audienceOptions.includes(editAudience) ? audienceOptions : [editAudience, ...audienceOptions]).map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="modal-footer-actions">
@@ -967,7 +891,7 @@ export default function Calendar({ readOnly = false }) {
                   disabled={isSubmitting}
                   className="btn-primary-action"
                 >
-                  {isSubmitting ? 'Guardando en APIM...' : 'Guardar Cambios (HTTP 200)'}
+                  {isSubmitting ? 'Guardando...' : 'Guardar cambios'}
                 </button>
               </div>
             </form>
@@ -992,7 +916,7 @@ export default function Calendar({ readOnly = false }) {
             </div>
 
             <p style={{ fontSize: '0.844rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: '14px 0' }}>
-              ¿Estás seguro de que deseas eliminar el hito <strong>&quot;{deletingEvent.title}&quot;</strong>? Esta acción ejecutará la petición <code>DELETE /calendar/events/{deletingEvent.id}</code> en Azure APIM.
+              ¿Estás seguro de que deseas eliminar el hito <strong>&quot;{deletingEvent.title}&quot;</strong>? Esta acción no se puede deshacer.
             </p>
 
             <div className="modal-footer-actions">
@@ -1018,7 +942,7 @@ export default function Calendar({ readOnly = false }) {
                   cursor: 'pointer',
                 }}
               >
-                {isSubmitting ? 'Eliminando...' : 'Eliminar en APIM (HTTP 200)'}
+                {isSubmitting ? 'Eliminando...' : 'Eliminar hito'}
               </button>
             </div>
           </div>
@@ -1027,42 +951,6 @@ export default function Calendar({ readOnly = false }) {
         )
       )}
 
-      {/* Modal de Resultado HTTP */}
-      {httpResult && (
-        <div
-          onClick={() => setHttpResult(null)}
-          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ backgroundColor: 'var(--card-bg, #fff)', borderRadius: 14, padding: '28px 28px 24px', maxWidth: 480, width: '100%', boxShadow: '0 20px 50px rgba(0,0,0,0.25)', border: httpResult.code === 400 ? '1.5px solid #f59e0b' : '1.5px solid #ef4444' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ backgroundColor: httpResult.code === 400 ? '#fef3c7' : '#fee2e2', color: httpResult.code === 400 ? '#b45309' : '#991b1b', fontWeight: 800, fontSize: '1.1rem', borderRadius: 8, padding: '4px 12px', fontFamily: 'monospace' }}>
-                  HTTP {httpResult.code}
-                </span>
-                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary, #111)' }}>{httpResult.label}</span>
-              </div>
-              <button type="button" onClick={() => setHttpResult(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-secondary, #666)', lineHeight: 1 }}>✕</button>
-            </div>
-            {httpResult.endpoint && (
-              <div style={{ marginBottom: 12, padding: '6px 12px', backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 6, fontSize: '0.781rem', fontFamily: 'monospace', color: 'var(--text-secondary, #444)' }}>
-                <strong>Solicitud a APIM:</strong> {httpResult.endpoint}
-              </div>
-            )}
-            <p style={{ margin: '0 0 14px', fontSize: '0.875rem', color: 'var(--text-secondary, #555)' }}>{httpResult.message}</p>
-            {httpResult.body && (
-              <pre style={{ backgroundColor: '#1e1e2e', color: '#cdd6f4', borderRadius: 8, padding: '12px 14px', fontSize: '0.781rem', overflowX: 'auto', margin: 0, lineHeight: 1.6 }}>
-                {JSON.stringify(httpResult.body, null, 2)}
-              </pre>
-            )}
-            <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setHttpResult(null)} style={{ backgroundColor: httpResult.code === 400 ? '#f59e0b' : '#ef4444', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 20px', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer' }}>Cerrar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

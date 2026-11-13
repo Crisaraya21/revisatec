@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ApiError } from '../lib/apiClient';
 import { groupsApi, groupAnalysisApi } from '../api';
 import { useCourse } from '../context/CourseContext';
@@ -7,6 +8,7 @@ import './Feedback.css';
 
 export default function Feedback() {
   const { selectedCourseId, loading: coursesLoading } = useCourse();
+  const requestedGroupId = useLocation().state?.groupId ?? null;
   const [groupsState, setGroupsState] = useState({ courseId: null, items: [] });
   const groups = useMemo(
     () => (Object.is(groupsState.courseId, selectedCourseId) ? groupsState.items : []),
@@ -73,7 +75,9 @@ export default function Feedback() {
         setApiError(null);
         setGroupsState({ courseId: selectedCourseId, items: nextGroups });
         if (nextGroups.length > 0) {
-          setSelectedGroupId(nextGroups[0].id);
+          // Si se llegó desde el detalle de un grupo, se abre ese grupo.
+          const requested = nextGroups.find((g) => String(g.id) === String(requestedGroupId));
+          setSelectedGroupId((requested || nextGroups[0]).id);
         } else {
           setSelectedGroupId(null);
         }
@@ -85,7 +89,7 @@ export default function Feedback() {
       });
 
     return () => { active = false; };
-  }, [selectedCourseId, coursesLoading, setSelectedGroupId]);
+  }, [selectedCourseId, coursesLoading, setSelectedGroupId, requestedGroupId]);
 
   // Cargar retroalimentación y análisis del grupo seleccionado
   useEffect(() => {

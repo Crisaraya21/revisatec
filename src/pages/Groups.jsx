@@ -73,6 +73,8 @@ export default function Groups() {
   const [editingGroup, setEditingGroup] = useState(null);
   const [editName, setEditName] = useState('');
   const [editRepo, setEditRepo] = useState('');
+  const [editAvance, setEditAvance] = useState(0);
+  const [editEstado, setEditEstado] = useState('Pendiente');
 
   // Modal de confirmación de eliminación (DELETE)
   const [deletingGroup, setDeletingGroup] = useState(null);
@@ -99,7 +101,7 @@ export default function Groups() {
     try {
       const res = await groupsApi.create({
         name: newGroupName.trim(),
-        repoUrl: newGroupRepo.trim() || undefined,
+        repoUrl: newGroupRepo.trim(),
         courseId: selectedCourseId,
       });
 
@@ -130,6 +132,8 @@ export default function Groups() {
     setEditingGroup(group);
     setEditName(group.name || '');
     setEditRepo(group.repoUrl || '');
+    setEditAvance(Number.isFinite(group.avance) ? group.avance : 0);
+    setEditEstado(group.estado || 'Pendiente');
     setFormError(null);
   };
 
@@ -144,9 +148,12 @@ export default function Groups() {
     setFormError(null);
 
     try {
+      // MS1 exige avance y estado en el PUT (GroupService.updateGroup).
       const res = await groupsApi.update(editingGroup.id, {
         name: editName.trim(),
-        repoUrl: editRepo.trim() || undefined,
+        repoUrl: editRepo.trim(),
+        avance: Number(editAvance),
+        estado: editEstado,
         courseId: editingGroup.courseId ?? selectedCourseId,
       });
 
@@ -270,7 +277,7 @@ export default function Groups() {
         <div className="course-header-left">
           <h1 className="course-title">Gestión de Grupos</h1>
           <span className="course-meta">
-            Administración completa de equipos, repositorios y estados en Azure APIM
+            Equipos, repositorios y avance del curso
           </span>
         </div>
 
@@ -300,7 +307,7 @@ export default function Groups() {
             <span className="summary-card-title">Grupos Registrados</span>
           </div>
           <div className="summary-card-number">{status === 'success' ? totalRecords : '—'}</div>
-          <div className="summary-card-footer">{status === 'success' ? `${totalRecords} en total` : 'No disponible desde APIM'}</div>
+          <div className="summary-card-footer">{status === 'success' ? `${totalRecords} en total` : 'No disponible'}</div>
         </div>
 
         <div className="summary-card">
@@ -340,7 +347,7 @@ export default function Groups() {
           </div>
           <div className="summary-card-number">{dashboardIssues === null ? '—' : dashboardIssues.length}</div>
           <div className="summary-card-footer">
-            {unresolvedIssues === null ? 'Estado no disponible desde APIM' : `${unresolvedIssues} sin resolver`}
+            {unresolvedIssues === null ? 'Estado no disponible' : `${unresolvedIssues} sin resolver`}
           </div>
         </div>
       </div>
@@ -385,7 +392,7 @@ export default function Groups() {
             type="button"
             onClick={reload}
             className="btn-secondary-action"
-            title="Refrescar lista desde APIM"
+            title="Recargar lista"
             style={{
               padding: '6px 12px',
               borderRadius: 8,
@@ -421,7 +428,7 @@ export default function Groups() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Icons.AlertTriangle />
             <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>
-              Error al consultar Azure APIM: {error}
+              No se pudieron cargar los grupos: {error}
             </span>
           </div>
           <button
@@ -453,7 +460,7 @@ export default function Groups() {
           items.map((group, index) => {
             const avance = Number.isFinite(Number(group.avance)) ? Number(group.avance) : null;
             const estado = group.estado || null;
-            const avatarCode = `G${group.id || index + 1}`;
+            const avatarCode = `G${group.id}`;
 
             return (
               <div
@@ -513,7 +520,7 @@ export default function Groups() {
               {status === 'loading' ? (
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                    Cargando lista paginada desde Azure APIM...
+                    Cargando grupos...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
@@ -527,12 +534,12 @@ export default function Groups() {
                   const avanceReal = group.avance ?? 0;
                   const estadoReal = group.estado || 'En progreso';
                   const memberCount = groupMemberCounts[group.id] ?? null;
-                  const avatarCode = `G${group.id || index + 1}`;
+                  const avatarCode = `G${group.id}`;
 
                   return (
                     <tr
                       key={group.id || index}
-                      onClick={() => navigate(`/groups/${group.id || index + 1}`)}
+                      onClick={() => navigate(`/groups/${group.id}`)}
                       style={{ cursor: 'pointer' }}
                     >
                       <td>
@@ -608,7 +615,7 @@ export default function Groups() {
                             type="button"
                             className="icon-circle-btn"
                             title="Ver detalle del grupo"
-                            onClick={() => navigate(`/groups/${group.id || index + 1}`)}
+                            onClick={() => navigate(`/groups/${group.id}`)}
                             style={{ width: 32, height: 32 }}
                           >
                             <Icons.Eye />
@@ -617,7 +624,7 @@ export default function Groups() {
                           <button
                             type="button"
                             className="icon-circle-btn"
-                            title="Editar grupo (PUT)"
+                            title="Editar grupo"
                             onClick={(e) => handleOpenEdit(group, e)}
                             style={{ width: 32, height: 32 }}
                           >
@@ -627,7 +634,7 @@ export default function Groups() {
                           <button
                             type="button"
                             className="icon-circle-btn"
-                            title="Eliminar grupo (DELETE)"
+                            title="Eliminar grupo"
                             onClick={(e) => handleOpenDelete(group, e)}
                             style={{ width: 32, height: 32, color: '#ef4444' }}
                           >
@@ -761,13 +768,14 @@ export default function Groups() {
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.813rem', fontWeight: 600, marginBottom: 6 }}>
-                  URL del Repositorio de GitHub
+                  URL del Repositorio de GitHub *
                 </label>
                 <input
                   type="url"
                   placeholder="https://github.com/revisatec/g4-backend"
                   value={newGroupRepo}
                   onChange={(e) => setNewGroupRepo(e.target.value)}
+                  required
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -888,6 +896,7 @@ export default function Groups() {
                   type="url"
                   value={editRepo}
                   onChange={(e) => setEditRepo(e.target.value)}
+                  required
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -899,6 +908,57 @@ export default function Groups() {
                     fontSize: '0.875rem',
                   }}
                 />
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 160px' }}>
+                  <label htmlFor="edit-group-estado" style={{ display: 'block', fontSize: '0.813rem', fontWeight: 600, marginBottom: 6 }}>
+                    Estado
+                  </label>
+                  <select
+                    id="edit-group-estado"
+                    value={editEstado}
+                    onChange={(e) => setEditEstado(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-default)',
+                      backgroundColor: 'var(--bg-surface)',
+                      color: 'var(--text-primary)',
+                      boxSizing: 'border-box',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    <option value="Pendiente">Pendiente</option>
+                    <option value="En progreso">En progreso</option>
+                    <option value="Completado">Completado</option>
+                  </select>
+                </div>
+                <div style={{ flex: '1 1 120px' }}>
+                  <label htmlFor="edit-group-avance" style={{ display: 'block', fontSize: '0.813rem', fontWeight: 600, marginBottom: 6 }}>
+                    Avance (%)
+                  </label>
+                  <input
+                    id="edit-group-avance"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editAvance}
+                    onChange={(e) => setEditAvance(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border-default)',
+                      backgroundColor: 'var(--bg-surface)',
+                      color: 'var(--text-primary)',
+                      boxSizing: 'border-box',
+                      fontSize: '0.875rem',
+                    }}
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 12 }}>

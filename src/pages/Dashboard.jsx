@@ -177,7 +177,7 @@ export default function Dashboard() {
           <div className="table-top-bar">
             <div className="table-title-area">
               <h2 className="table-main-title">Último avance de grupos</h2>
-              <span className="table-total-count">Monitoreo reciente en Azure APIM</span>
+              <span className="table-total-count">Actividad reciente</span>
             </div>
 
             <button
@@ -218,7 +218,7 @@ export default function Dashboard() {
                 {status === 'loading' ? (
                   <tr>
                     <td colSpan="5" style={{ textAlign: 'center', padding: '36px' }}>
-                      Cargando datos desde Azure APIM...
+                      Cargando datos...
                     </td>
                   </tr>
                 ) : status === 'error' ? (
@@ -237,12 +237,12 @@ export default function Dashboard() {
                   items.map((group, index) => {
                     const avanceReal = group.avance ?? 0;
                     const estadoReal = group.estado || 'Sin estado';
-                    const avatarCode = `G${group.id || index + 1}`;
+                    const avatarCode = `G${group.id}`;
 
                     return (
                       <tr
                         key={group.id || index}
-                        onClick={() => navigate(`/groups/${group.id || index + 1}`)}
+                        onClick={() => navigate(`/groups/${group.id}`)}
                         style={{ cursor: 'pointer' }}
                       >
                         <td>

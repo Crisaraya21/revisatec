@@ -127,7 +127,7 @@ export default function Login() {
             <form onSubmit={handleDevLogin} className="login-form">
               <div className="login-field-group">
                 <label htmlFor="dev-email" className="login-label">
-                  Acceso de desarrollo (solo local)
+                  Accede con tu correo institucional
                 </label>
                 <div className="login-input-box">
                   <span className="login-input-icon">
@@ -138,7 +138,7 @@ export default function Login() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="correo registrado en MS1"
+                    placeholder="nombre@estudiantec.cr"
                     className="login-input"
                     required
                   />

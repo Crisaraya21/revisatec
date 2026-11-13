@@ -1,4 +1,4 @@
-﻿// Cliente central de la API - Azure API Management (APIM).
+// Cliente central de la API - Azure API Management (APIM).
 // La URL base y la clave NUNCA se hardcodean ni se suben al repo:
 // vienen de variables de entorno que GitHub Actions inyecta en el build.
 //
@@ -67,26 +67,28 @@ async function request(path, options = {}) {
   return body;
 }
 
-export function buildQuery({ page, pageSize, search, courseId } = {}) {
+export function buildQuery(queryObj = {}) {
   const params = new URLSearchParams();
-  if (page !== undefined && page !== null) params.set('page', String(page));
-  if (pageSize !== undefined && pageSize !== null) params.set('pageSize', String(pageSize));
-  if (search !== undefined && search !== null && search.trim() !== '') params.set('search', search.trim());
-  if (courseId !== undefined && courseId !== null) params.set('courseId', String(courseId));
+  for (const [key, value] of Object.entries(queryObj)) {
+    if (value !== undefined && value !== null && value !== '') {
+      params.set(key, String(value).trim());
+    }
+  }
   const queryString = params.toString();
   return queryString ? `?${queryString}` : '';
 }
 
 export const api = {
-  get: (path) => request(path, { method: 'GET' }),
-  post: (path, data) =>
-    request(path, { method: 'POST', body: JSON.stringify(data) }),
-  put: (path, data) =>
-    request(path, { method: 'PUT', body: JSON.stringify(data) }),
-  patch: (path, data) =>
+  get: (path, options = {}) => request(path, { method: 'GET', ...options }),
+  post: (path, data, options = {}) =>
+    request(path, { method: 'POST', body: JSON.stringify(data), ...options }),
+  put: (path, data, options = {}) =>
+    request(path, { method: 'PUT', body: JSON.stringify(data), ...options }),
+  patch: (path, data, options = {}) =>
     request(path, {
       method: 'PATCH',
       body: data !== undefined ? JSON.stringify(data) : undefined,
+      ...options,
     }),
-  delete: (path) => request(path, { method: 'DELETE' }),
+  delete: (path, options = {}) => request(path, { method: 'DELETE', ...options }),
 };

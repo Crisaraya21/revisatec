@@ -1,6 +1,7 @@
-﻿import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../notifications/useNotifications';
+import { useAuth } from '../context/AuthContext';
 import { formatRelative } from '../utils/date';
 import { Icons } from './Icons';
 import './NotificationBell.css';
@@ -10,6 +11,7 @@ import './NotificationBell.css';
  * Conectado con useNotifications() y WebSocket de Azure Web PubSub en tiempo real.
  */
 export function NotificationBell() {
+  const { isStudent } = useAuth();
   const {
     items,
     unreadCount,
@@ -66,8 +68,20 @@ export function NotificationBell() {
   const handleItemClick = (item) => {
     markAsRead(item.id);
     handleClose();
-    if (item.groupId) {
-      navigate(`/groups/${item.groupId}`);
+    if (isStudent) {
+      if (item.type === 'FEEDBACK_PUBLISHED') {
+        navigate('/student/feedback');
+      } else if (item.type === 'ISSUE_DETECTED') {
+        navigate('/student/group');
+      } else {
+        navigate('/student');
+      }
+    } else {
+      if (item.groupId) {
+        navigate(`/groups/${item.groupId}`);
+      } else {
+        navigate('/groups');
+      }
     }
   };
 

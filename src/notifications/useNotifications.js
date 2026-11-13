@@ -1,28 +1,41 @@
-﻿import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { INITIAL_MOCK_NOTIFICATIONS } from './mockNotifications';
 import { notificationsApi } from '../api/notificationsApi';
 import { connectRealtime } from './realtimeClient';
+import { useAuth } from '../context/AuthContext';
 
 const dataSource = import.meta.env.VITE_NOTIFICATIONS_SOURCE || 'api';
 
 /**
  * Hook central para la gestión de notificaciones en tiempo real del frontend.
- * Soporta fuentes de datos 'api' (con WebSocket de Web PubSub) y 'mock'.
- *
- * @returns {{
- *   items: Array<object>,
- *   unreadCount: number,
- *   status: 'idle' | 'loading' | 'success' | 'error',
- *   error: string | null,
- *   connectionStatus: 'connecting' | 'live' | 'reconnecting' | 'offline',
- *   lastIncomingNotification: object | null,
- *   markAsRead: (id: string) => Promise<void>,
- *   markAllAsRead: () => Promise<void>,
- *   reload: () => Promise<void>
- * }}
+ * Segmenta la carga de eventos según la identidad del usuario (estudiante o profesor).
  */
 export function useNotifications() {
   const isMock = dataSource === 'mock';
+  const { user, isStudent, isProfessor } = useAuth();
+
+  const userEmail = user?.email || '';
+
+  // Cursos asignados (profesor) o matriculados (estudiante)
+  const courseIds = useMemo(() => {
+    if (!user) return '';
+    if (isProfessor) {
+      return (user.courses || []).map((c) => c.id).filter(Boolean).join(',');
+    }
+    return (user.memberships || [])
+      .map((m) => m.course?.id || m.courseId)
+      .filter(Boolean)
+      .join(',');
+  }, [user, isProfessor]);
+
+  // Grupos a los que pertenece el usuario (solo estudiantes)
+  const groupIds = useMemo(() => {
+    if (!user || !isStudent) return '';
+    return (user.memberships || [])
+      .map((m) => m.group?.id || m.groupId)
+      .filter(Boolean)
+      .join(',');
+  }, [user, isStudent]);
 
   const [items, setItems] = useState(() => (isMock ? [...INITIAL_MOCK_NOTIFICATIONS] : []));
   const [status, setStatus] = useState(isMock ? 'success' : 'loading');
@@ -41,7 +54,7 @@ export function useNotifications() {
   );
 
   /**
-   * Recarga los datos desde la API o mock.
+   * Recarga los datos desde la API filtrando según el usuario actual.
    */
   const reload = useCallback(async () => {
     if (isMock) {
@@ -59,8 +72,13 @@ export function useNotifications() {
 
     setError(null);
     try {
-      const response = await notificationsApi.list({ page: 1, pageSize: 50 });
-      const loaded = response?.data || response?.items || (Array.isArray(response) ? response : []);
+      const params = { page: 1, pageSize: 50 };
+      if (userEmail) params.userEmail = userEmail;
+      if (courseIds) params.courseIds = courseIds;
+      if (groupIds) params.groupIds = groupIds;
+
+      const response = await notificationsApi.list(params);
+      const loaded = response?.items || response?.data || (Array.isArray(response) ? response : []);
 
       const sorted = [...loaded].sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
       setItems(sorted);
@@ -70,7 +88,7 @@ export function useNotifications() {
       setError(err?.message || 'No se pudieron cargar las notificaciones');
       setStatus('error');
     }
-  }, [isMock]);
+  }, [isMock, userEmail, courseIds, groupIds]);
 
   // Conexión de tiempo real cuando la fuente es 'api'
   useEffect(() => {
@@ -82,9 +100,14 @@ export function useNotifications() {
 
     async function fetchInitial() {
       try {
-        const response = await notificationsApi.list({ page: 1, pageSize: 50 });
+        const params = { page: 1, pageSize: 50 };
+        if (userEmail) params.userEmail = userEmail;
+        if (courseIds) params.courseIds = courseIds;
+        if (groupIds) params.groupIds = groupIds;
+
+        const response = await notificationsApi.list(params);
         if (!isMounted) return;
-        const loaded = response?.data || response?.items || (Array.isArray(response) ? response : []);
+        const loaded = response?.items || response?.data || (Array.isArray(response) ? response : []);
         const sorted = [...loaded].sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
         setItems(sorted);
         setStatus('success');
@@ -99,11 +122,33 @@ export function useNotifications() {
     fetchInitial();
 
     const client = connectRealtime({
-      getUrl: () => notificationsApi.getRealtimeToken(),
+      getUrl: () =>
+        notificationsApi.getRealtimeToken({
+          userEmail,
+          courseIds,
+          groupIds,
+        }),
       onMessage: (message) => {
         if (!isMounted) return;
         if (message && message.data) {
           const newNotification = message.data;
+
+          // Si el usuario es estudiante, verificar que pertenezca a su grupo
+          if (isStudent && groupIds) {
+            const studentGroupList = groupIds.split(',').map((id) => parseInt(id.trim(), 10));
+            if (!studentGroupList.includes(Number(newNotification.groupId))) {
+              return;
+            }
+          }
+
+          // Si el usuario es profesor, verificar que pertenezca a sus cursos
+          if (isProfessor && courseIds) {
+            const profCourseList = courseIds.split(',').map((id) => parseInt(id.trim(), 10));
+            if (!profCourseList.includes(Number(newNotification.courseId))) {
+              return;
+            }
+          }
+
           setLastIncomingNotification(newNotification);
 
           setItems((prev) => {
@@ -129,28 +174,31 @@ export function useNotifications() {
       isMounted = false;
       client.close();
     };
-  }, [isMock, reload]);
+  }, [isMock, reload, userEmail, courseIds, groupIds, isStudent, isProfessor]);
 
   /**
-   * Marca una notificación como leída con actualización optimista.
+   * Marca una notificación como leída con actualización optimista y vinculada al usuario.
    */
-  const markAsRead = useCallback(async (id) => {
-    const previousItems = itemsRef.current;
+  const markAsRead = useCallback(
+    async (id) => {
+      const previousItems = itemsRef.current;
 
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, read: true } : item))
-    );
+      setItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, read: true } : item))
+      );
 
-    if (isMock) return;
+      if (isMock) return;
 
-    try {
-      await notificationsApi.markAsRead(id);
-    } catch (err) {
-      console.error(`[Notifications] Error al marcar leída #${id}:`, err);
-      setItems(previousItems);
-      setError('No se pudo actualizar el estado de la notificación');
-    }
-  }, [isMock]);
+      try {
+        await notificationsApi.markAsRead(id, { userEmail });
+      } catch (err) {
+        console.error(`[Notifications] Error al marcar leída #${id}:`, err);
+        setItems(previousItems);
+        setError('No se pudo actualizar el estado de la notificación');
+      }
+    },
+    [isMock, userEmail]
+  );
 
   /**
    * Marca todas las notificaciones como leídas con actualización optimista.
@@ -165,13 +213,13 @@ export function useNotifications() {
     if (isMock) return;
 
     try {
-      await notificationsApi.markAllAsRead();
+      await notificationsApi.markAllAsRead({ userEmail, courseIds, groupIds });
     } catch (err) {
       console.error('[Notifications] Error al marcar todas como leídas:', err);
       setItems(previousItems);
       setError('No se pudieron marcar todas las notificaciones');
     }
-  }, [isMock]);
+  }, [isMock, userEmail, courseIds, groupIds]);
 
   return {
     items,

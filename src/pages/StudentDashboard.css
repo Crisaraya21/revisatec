@@ -328,6 +328,61 @@
 .member-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+}
+
+.member-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.member-avatar {
+  flex-shrink: 0;
+}
+
+.member-email {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Usuario de GitHub del integrante: etiqueta discreta que abre su perfil */
+.member-github {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: flex-start;
+  max-width: 100%;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-default);
+  background-color: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: 0.719rem;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.member-github:hover,
+.member-github:focus-visible {
+  border-color: var(--action-primary);
+  color: var(--action-primary);
+}
+
+.member-github svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
 }
 
 .member-name {

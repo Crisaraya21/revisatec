@@ -308,22 +308,27 @@ export default function StudentGroup() {
                             border: '1px solid var(--border-default)',
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div className="member-avatar">
+                          <div className="member-identity">
+                            <div className={`member-avatar${m.email === user?.email ? ' is-me' : ''}`}>
                               {m.name?.charAt(0)}
                             </div>
-                            <div>
-                              <span style={{ fontSize: '0.844rem', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>
-                                {m.name}
-                              </span>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                                {m.email}{m.email === user?.email ? ' · Tú' : ''}
-                              </span>
+                            <div className="member-info">
+                              <span className="member-name">{m.name}{m.email === user?.email ? ' (tú)' : ''}</span>
+                              <span className="member-email">{m.email}</span>
+                              {m.githubUser && (
+                                <a
+                                  className="member-github"
+                                  href={`https://github.com/${encodeURIComponent(m.githubUser)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={`Perfil de GitHub de ${m.name}`}
+                                >
+                                  <Icons.GitBranch />
+                                  <span>{m.githubUser}</span>
+                                </a>
+                              )}
                             </div>
                           </div>
-                          <span style={{ fontSize: '0.813rem', fontWeight: 700, color: 'var(--action-primary)' }}>
-                            {m.githubUser ? `@${m.githubUser}` : ''}
-                          </span>
                         </div>
                       ))}
                     </div>

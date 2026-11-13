@@ -51,10 +51,7 @@ export default function Login() {
         });
         if (!res.ok) throw new Error(`Google respondió HTTP ${res.status}`);
         const profile = await res.json();
-        if (!/@(estudiantec\.cr|itcr\.ac\.cr)$/i.test(profile.email || '')) {
-          setGoogleError('Usa tu cuenta institucional (@estudiantec.cr o @itcr.ac.cr).');
-          return;
-        }
+        // El acceso lo controla MS1: solo entran correos registrados como profesor o integrante.
         await signIn({ name: profile.name, email: profile.email, picture: profile.picture });
       } catch (err) {
         console.error('No se pudo leer el perfil de Google:', err);
@@ -96,7 +93,7 @@ export default function Login() {
               Inicia sesión en tu <span className="login-title-accent">cuenta</span>
             </h1>
             <p className="login-subtitle">
-              Profesores y estudiantes ingresan con su correo institucional.
+              Profesores y estudiantes ingresan con su cuenta de Google.
             </p>
           </div>
 
@@ -122,7 +119,7 @@ export default function Login() {
               <Icons.ShieldCheck width={20} height={20} />
             </span>
             <span>
-              Solo se permiten cuentas institucionales terminadas en <strong>@estudiantec.cr</strong> o <strong>@itcr.ac.cr</strong>.
+              Solo pueden entrar las cuentas que el profesor registró en RevisaTEC.
             </span>
           </div>
 

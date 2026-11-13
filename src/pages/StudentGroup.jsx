@@ -14,7 +14,7 @@ export default function StudentGroup() {
   const { user } = useAuth();
   const { selectedCourse } = useCourse();
   const [reloadKey, setReloadKey] = useState(0);
-  const assignment = useStudentGroup(reloadKey);
+  const assignment = useStudentGroup();
   const groupId = assignment.group?.id ?? null;
 
   const [data, setData] = useState({ groupId: null, group: null, members: null, issues: [], milestones: [] });

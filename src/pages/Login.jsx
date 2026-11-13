@@ -2,24 +2,44 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../context/AuthContext';
+import { ApiError } from '../lib/apiClient';
 import { useTheme } from '../context/ThemeContext';
 import { Icons } from '../components/Icons';
 import './Login.css';
 
 export default function Login() {
   const [email, setEmail] = useState('');
-  const { loginAsProfessor, loginAsStudent } = useAuth();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const { loginWithGoogleProfile } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const [googleError, setGoogleError] = useState(null);
 
-  const handleNormalLogin = (e) => {
-    e.preventDefault();
-    // Botón normal: Ingresa como Profesor
-    loginAsProfessor(email.trim() || 'profesor@itcr.ac.cr');
-    navigate('/groups');
+  // El rol (profesor o estudiante) lo decide MS1 con GET /me, no la pantalla.
+  const signIn = async (profile) => {
+    setIsSigningIn(true);
+    try {
+      const session = await loginWithGoogleProfile(profile);
+      navigate(session.role === 'professor' ? '/groups' : '/student');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setGoogleError(`El correo ${profile.email} no está registrado en RevisaTEC. Pide al profesor que te agregue.`);
+      } else {
+        console.error('Error al iniciar sesión:', err);
+        setGoogleError('No se pudo iniciar sesión. Intenta de nuevo.');
+      }
+    } finally {
+      setIsSigningIn(false);
+    }
   };
 
-  const [googleError, setGoogleError] = useState(null);
+  // Solo en desarrollo local (npm run dev): permite probar con un correo registrado
+  // sin cuenta de Google. No existe en el sitio desplegado.
+  const handleDevLogin = (e) => {
+    e.preventDefault();
+    setGoogleError(null);
+    signIn({ email: email.trim() });
+  };
 
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
@@ -35,8 +55,7 @@ export default function Login() {
           setGoogleError('Usa tu cuenta institucional (@estudiantec.cr o @itcr.ac.cr).');
           return;
         }
-        loginAsStudent({ name: profile.name, email: profile.email, picture: profile.picture });
-        navigate('/student');
+        await signIn({ name: profile.name, email: profile.email, picture: profile.picture });
       } catch (err) {
         console.error('No se pudo leer el perfil de Google:', err);
         setGoogleError('No se pudo obtener tu perfil de Google. Intenta de nuevo.');
@@ -81,51 +100,15 @@ export default function Login() {
             </p>
           </div>
 
-          <form onSubmit={handleNormalLogin} className="login-form">
-            <div className="login-field-group">
-              <label htmlFor="inst-email" className="login-label">
-                Correo institucional
-              </label>
-              <div className="login-input-box">
-                <span className="login-input-icon">
-                  <Icons.Mail width={17} height={17} />
-                </span>
-                <input
-                  id="inst-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="nombre@estudiantec.cr"
-                  className="login-input"
-                />
-              </div>
-            </div>
-
-            {/* Botón Normal: Entra como Profesor */}
-            <button type="submit" className="btn-login-primary">
-              <span>Iniciar sesión</span>
-              <span className="btn-arrow">→</span>
-            </button>
-          </form>
-
-          <a href="#" onClick={(e) => e.preventDefault()} className="login-forgot-link">
-            ¿Problemas para ingresar?
-          </a>
-
-          <div className="login-divider">
-            <span className="login-divider-line"></span>
-            <span className="login-divider-text">o</span>
-            <span className="login-divider-line"></span>
-          </div>
-
-          {/* Botón Google: Entra como Estudiante */}
+          {/* Botón Google: profesores y estudiantes */}
           <button
             type="button"
             onClick={() => handleGoogleLogin()}
             className="btn-login-google"
+            disabled={isSigningIn}
           >
             <Icons.Google />
-            <span>Continuar con Google</span>
+            <span>{isSigningIn ? 'Verificando tu cuenta...' : 'Continuar con Google'}</span>
           </button>
 
           {googleError && (
@@ -139,9 +122,37 @@ export default function Login() {
               <Icons.ShieldCheck width={20} height={20} />
             </span>
             <span>
-              Solo se permiten cuentas institucionales terminadas en <strong>@estudiantec.cr</strong> o <strong>@itcr</strong>.
+              Solo se permiten cuentas institucionales terminadas en <strong>@estudiantec.cr</strong> o <strong>@itcr.ac.cr</strong>.
             </span>
           </div>
+
+          {import.meta.env.DEV && (
+            <form onSubmit={handleDevLogin} className="login-form">
+              <div className="login-field-group">
+                <label htmlFor="dev-email" className="login-label">
+                  Acceso de desarrollo (solo local)
+                </label>
+                <div className="login-input-box">
+                  <span className="login-input-icon">
+                    <Icons.Mail width={17} height={17} />
+                  </span>
+                  <input
+                    id="dev-email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="correo registrado en MS1"
+                    className="login-input"
+                    required
+                  />
+                </div>
+              </div>
+              <button type="submit" className="btn-login-primary" disabled={isSigningIn}>
+                <span>Entrar con este correo</span>
+                <span className="btn-arrow">→</span>
+              </button>
+            </form>
+          )}
         </div>
       </div>
 

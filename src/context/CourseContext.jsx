@@ -1,16 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { coursesApi } from '../api';
+import { useAuth } from './AuthContext';
 
 const CourseContext = createContext(null);
 const STORAGE_KEY = 'revisatec_selected_course_id';
-let coursesRequest;
-
-function getCourseList(response) {
-  if (Array.isArray(response)) return response;
-  if (Array.isArray(response?.content)) return response.content;
-  if (Array.isArray(response?.items)) return response.items;
-  return null;
-}
 
 function readSavedCourseId() {
   try {
@@ -21,77 +13,36 @@ function readSavedCourseId() {
   }
 }
 
+/**
+ * Cursos visibles para la sesión actual. Vienen de GET /me (MS1):
+ * el profesor ve sus cursos asignados y el estudiante los cursos donde es integrante.
+ */
 export function CourseProvider({ children }) {
-  const [courses, setCourses] = useState([]);
-  const [selectedCourseId, setSelectedCourseId] = useState(readSavedCourseId);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { user } = useAuth();
+  const courses = useMemo(() => user?.courses || [], [user]);
+  const [savedCourseId, setSelectedCourseId] = useState(readSavedCourseId);
+
+  const selectedCourse = courses.find((course) => String(course.id) === String(savedCourseId))
+    || courses[0]
+    || null;
 
   useEffect(() => {
-    let active = true;
-    if (!coursesRequest) coursesRequest = coursesApi.list();
-
-    coursesRequest
-      .then((response) => {
-        if (!active) return;
-        const courseList = getCourseList(response);
-        if (!courseList) {
-          throw new Error('La respuesta de /courses no contiene una lista de cursos.');
-        }
-        const validCourses = courseList.filter((course) => (
-          course &&
-          course.id !== undefined &&
-          course.id !== null &&
-          typeof course.name === 'string' &&
-          course.name.trim() !== ''
-        ));
-        if (validCourses.length !== courseList.length) {
-          throw new Error('La respuesta de /courses contiene cursos sin identificador o nombre.');
-        }
-        setCourses(validCourses);
-        setSelectedCourseId((currentId) => (
-          validCourses.some((course) => String(course.id) === String(currentId))
-            ? currentId
-            : validCourses[0]?.id ?? null
-        ));
-      })
-      .catch((requestError) => {
-        if (!active) return;
-        console.error('Error al cargar cursos desde APIM:', requestError);
-        setError(requestError instanceof Error
-          ? `No se pudieron cargar los cursos desde APIM: ${requestError.message}`
-          : 'No se pudieron cargar los cursos desde APIM.');
-        coursesRequest = null;
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (selectedCourseId === null || selectedCourseId === undefined) return;
+    if (!selectedCourse) return;
     try {
-      localStorage.setItem(STORAGE_KEY, String(selectedCourseId));
+      localStorage.setItem(STORAGE_KEY, String(selectedCourse.id));
     } catch (storageError) {
       console.error('Error al guardar el curso seleccionado en localStorage:', storageError);
     }
-  }, [selectedCourseId]);
+  }, [selectedCourse]);
 
-  const selectedCourse = courses.find(
-    (course) => String(course.id) === String(selectedCourseId)
-  ) || null;
   const value = useMemo(() => ({
     courses,
     selectedCourse,
     selectedCourseId: selectedCourse?.id ?? null,
     setSelectedCourseId,
-    loading,
-    error,
-  }), [courses, selectedCourse, loading, error]);
+    loading: false,
+    error: user && courses.length === 0 ? 'No tienes cursos asignados en RevisaTEC.' : null,
+  }), [courses, selectedCourse, user]);
 
   return (
     <CourseContext.Provider value={value}>

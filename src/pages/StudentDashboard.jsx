@@ -17,7 +17,7 @@ export default function StudentDashboard() {
   const { selectedCourseId, selectedCourse } = useCourse();
   const studentFirstName = user?.name?.split(' ')[0] || 'Estudiante';
   const [reloadKey, setReloadKey] = useState(0);
-  const assignment = useStudentGroup(reloadKey);
+  const assignment = useStudentGroup();
   const groupId = assignment.group?.id ?? null;
 
   const [data, setData] = useState({ groupId: null, analysis: null, members: [], milestones: [], feedback: null, issues: [] });

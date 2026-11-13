@@ -13,7 +13,7 @@ export default function StudentFeedback() {
   const { user } = useAuth();
   const { selectedCourse } = useCourse();
   const [reloadKey, setReloadKey] = useState(0);
-  const assignment = useStudentGroup(reloadKey);
+  const assignment = useStudentGroup();
   const studentGroupId = assignment.group?.id ?? null;
 
   const [feedbackData, setFeedbackData] = useState(null);

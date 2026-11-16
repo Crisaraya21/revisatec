@@ -40,7 +40,6 @@ export default function Issues() {
   const [groupFilter, setGroupFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
-  const [bannerClosed, setBannerClosed] = useState(false);
   const [apiError, setApiError] = useState(null);
   const requestIdRef = useRef(0);
 
@@ -124,7 +123,6 @@ export default function Issues() {
 
   // Contadores dinámicos
   const totalCount = issues.length;
-  const unresolvedCount = issues.filter((i) => i.status === 'Sin resolver').length;
   const testCommitCount = issues.filter((i) => i.type.toLowerCase().includes('commit')).length;
   const deliveryErrorCount = issues.filter((i) => i.type.toLowerCase().includes('entrega')).length;
 
@@ -177,32 +175,6 @@ export default function Issues() {
           </div>
         </div>
       </div>
-
-      {/* Banner Informativo de Alertas Activas */}
-      {!bannerClosed && unresolvedCount > 0 && !isLoading && !apiError && (
-        <div className="issues-warning-banner" role="status">
-          <div className="warning-banner-left">
-            <span className="warning-badge-counter">{unresolvedCount}</span>
-            <div className="warning-banner-text">
-              <span className="warning-banner-title">
-                {unresolvedCount} {unresolvedCount === 1 ? 'inconveniente pendiente' : 'inconvenientes pendientes'} de revisión
-              </span>
-              <span className="warning-banner-desc">
-                Se detectaron anomalías en commits o entregas que requieren seguimiento docente.
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setBannerClosed(true)}
-            className="warning-banner-close"
-            title="Cerrar notificación"
-            aria-label="Cerrar aviso"
-          >
-            ✕
-          </button>
-        </div>
-      )}
 
       {/* Error de Conexión */}
       {apiError && (

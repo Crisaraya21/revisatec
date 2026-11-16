@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { useCourse } from './context/CourseContext';
+import { useUnresolvedIssues } from './hooks/useUnresolvedIssues';
 import { Icons } from './components/Icons';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NotificationBell } from './components/NotificationBell';
@@ -23,6 +25,8 @@ import './App.css';
 
 function MainAppShell() {
   const { user, isProfessor, isStudent, logout } = useAuth();
+  const { selectedCourseId } = useCourse();
+  const unresolvedIssues = useUnresolvedIssues(selectedCourseId, isProfessor);
   const location = useLocation();
   const navigate = useNavigate();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -254,7 +258,17 @@ function MainAppShell() {
                     title="Inconvenientes"
                   >
                     <div className="sidebar-link-content">
-                      <Icons.Inconvenientes />
+                      <div className="sidebar-icon-wrap">
+                        <Icons.Inconvenientes />
+                        {unresolvedIssues > 0 && (
+                          <div
+                            className="sidebar-count-bubble"
+                            aria-label={`${unresolvedIssues} inconvenientes sin resolver`}
+                          >
+                            {unresolvedIssues > 9 ? '9+' : unresolvedIssues}
+                          </div>
+                        )}
+                      </div>
                       <span>Inconvenientes</span>
                     </div>
                   </NavLink>

@@ -53,44 +53,104 @@
   transform: translateY(-1px);
 }
 
-/* Banner Informativo */
-.issues-info-banner {
+/* Banner de Inconvenientes Pendientes (Image 3 fix) */
+.issues-warning-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: rgba(57, 111, 162, 0.08);
-  border: 1px solid rgba(57, 111, 162, 0.2);
-  border-radius: 10px;
+  background-color: var(--badge-warning-bg, #fef3c7);
+  border: 1px solid var(--badge-warning-border, #fde68a);
+  border-radius: 12px;
   padding: 12px 18px;
-  gap: 12px;
+  gap: 16px;
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.06);
 }
 
-.banner-content {
+.warning-banner-left {
   display: flex;
   align-items: center;
-  gap: 10px;
-  color: var(--text-primary);
-  font-size: 0.813rem;
+  gap: 14px;
 }
 
-.banner-icon {
-  color: var(--action-primary);
+.warning-badge-counter {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #d97706;
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 800;
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(217, 119, 6, 0.3);
 }
 
-.banner-close-btn {
-  background: none;
+.warning-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.warning-banner-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--badge-warning-text, #92400e);
+}
+
+.warning-banner-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.warning-banner-close {
+  background: transparent;
   border: none;
-  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--badge-warning-text, #92400e);
   cursor: pointer;
-  font-size: 0.875rem;
-  padding: 4px;
-  transition: color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: bold;
+  opacity: 0.7;
+  transition: opacity 0.15s, background-color 0.15s;
+  flex-shrink: 0;
 }
 
-.banner-close-btn:hover {
-  color: var(--text-primary);
+.warning-banner-close:hover {
+  opacity: 1;
+  background-color: rgba(180, 83, 9, 0.12);
+}
+
+[data-theme='dark'] .issues-warning-banner {
+  background-color: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-theme='dark'] .warning-badge-counter {
+  background-color: #f59e0b;
+  color: #0f1722;
+}
+
+[data-theme='dark'] .warning-banner-title {
+  color: #fbbf24;
+}
+
+[data-theme='dark'] .warning-banner-desc {
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .warning-banner-close {
+  color: #fbbf24;
+}
+
+[data-theme='dark'] .warning-banner-close:hover {
+  background-color: rgba(245, 158, 11, 0.2);
 }
 
 /* Barra de Filtros */
@@ -110,7 +170,8 @@
   border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 8px 14px;
-  width: 260px;
+  width: 320px;
+  max-width: 100%;
   color: var(--text-muted);
 }
 
@@ -310,6 +371,7 @@
   font-size: 0.813rem;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
   transition: transform 0.15s ease;
 }
 

@@ -83,7 +83,7 @@ export default function StudentGroup() {
       });
       setData((prev) => ({ ...prev, group: res || { ...prev.group, repoUrl: repoInput.trim() } }));
       setIsEditing(false);
-      showToast('success', 200, 'Repositorio actualizado', 'La URL del repositorio se guardó en MS1.');
+      showToast('success', 200, 'Repositorio actualizado', 'La URL del repositorio se guardó correctamente.');
     } catch (err) {
       console.error('Error al actualizar repo:', err);
       const code = err instanceof ApiError ? err.status : 400;
@@ -221,7 +221,7 @@ export default function StudentGroup() {
           <div className="criteria-card-header">
             <h3 className="criteria-card-title">Configuración del Repositorio de GitHub</h3>
             <span className="criteria-card-subtitle">
-              Se guarda en MS1 con <code>PUT /groups/{group.id}</code>
+              Enlace oficial al repositorio para el seguimiento y análisis del proyecto
             </span>
           </div>
 

@@ -464,7 +464,7 @@ export default function Calendar({ readOnly = false }) {
               cursor: 'pointer',
             }}
           >
-            Reintentar llamada a APIM
+            Reintentar
           </button>
         </div>
       )}
@@ -537,7 +537,7 @@ export default function Calendar({ readOnly = false }) {
         <div className="calendar-right-widgets">
           {/* Widget: Próximas fechas */}
           <div className="figma-widget-card">
-            <h3 className="widget-card-heading">Próximas fechas en vivo</h3>
+            <h3 className="widget-card-heading">Próximas fechas</h3>
             <div className="upcoming-events-list">
               {upcomingEvents.length > 0 ? upcomingEvents.slice(0, 3).map((event) => (
                 <CalendarEventRow key={event.id || `${event.date}-${event.title}`} event={event} />

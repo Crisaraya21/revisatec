@@ -17,7 +17,6 @@ export function NotificationBell() {
     unreadCount,
     status,
     error,
-    connectionStatus,
     lastIncomingNotification,
     markAsRead,
     markAllAsRead,
@@ -87,41 +86,6 @@ export function NotificationBell() {
 
   const badgeDisplay = unreadCount > 9 ? '9+' : unreadCount > 0 ? unreadCount : null;
 
-  // Renderizado del indicador de conexión
-  const renderConnectionBadge = () => {
-    switch (connectionStatus) {
-      case 'live':
-        return (
-          <span className="notification-conn-status live" title="Conexión en vivo activa">
-            <span className="notification-status-dot live" aria-hidden="true" />
-            <span>En vivo</span>
-          </span>
-        );
-      case 'reconnecting':
-        return (
-          <span className="notification-conn-status reconnecting" title="Reconectando con el servidor...">
-            <span className="notification-status-dot reconnecting" aria-hidden="true" />
-            <span>Reconectando...</span>
-          </span>
-        );
-      case 'connecting':
-        return (
-          <span className="notification-conn-status connecting" title="Estableciendo conexión...">
-            <span className="notification-status-dot connecting" aria-hidden="true" />
-            <span>Conectando...</span>
-          </span>
-        );
-      case 'offline':
-      default:
-        return (
-          <span className="notification-conn-status offline" title="Sin conexión de tiempo real">
-            <span className="notification-status-dot offline" aria-hidden="true" />
-            <span>Sin conexión</span>
-          </span>
-        );
-    }
-  };
-
   return (
     <div className="notification-bell-container" ref={containerRef}>
       {/* Región accesible invisible para anuncios a lectores de pantalla */}
@@ -170,7 +134,6 @@ export function NotificationBell() {
             </div>
 
             <div className="notification-header-actions">
-              {renderConnectionBadge()}
               <button
                 type="button"
                 className="notification-mark-all-btn"

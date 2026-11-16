@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { courseConfigApi } from '../api';
 import { useCourse } from '../context/CourseContext';
 import { ApiError, clearApiCache } from '../lib/apiClient';
@@ -297,7 +297,7 @@ export default function Rubric() {
       console.error('Error al guardar configuración en APIM:', err);
       if (err instanceof ApiError) {
         if (err.status === 400) {
-          setSaveErrorMsg(err.message || 'Datos inválidos según el esquema de MS2 (400).');
+          setSaveErrorMsg(err.message || 'Los datos de la rúbrica no son válidos (400).');
         } else if (err.status === 404) {
           setSaveErrorMsg('El curso seleccionado no existe.');
         } else {
@@ -465,7 +465,7 @@ export default function Rubric() {
                 <span className="tag-proximamente">Próximamente</span>
               </span>
               <span className="upload-sub-text">
-                El endpoint de carga de archivos (PDF/Word) no está contemplado en el contrato OpenAPI de MS2. Los criterios se configuran directamente abajo.
+                Los criterios de evaluación se configuran directamente en la sección inferior.
               </span>
             </div>
 
@@ -628,7 +628,6 @@ export default function Rubric() {
                   <span className="char-counter">
                     {instructions.length} caracteres
                   </span>
-                  <span>Se envían en cada solicitud de análisis a MS2</span>
                 </div>
               </>
             )}

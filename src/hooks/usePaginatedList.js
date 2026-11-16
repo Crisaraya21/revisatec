@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { api, ApiError, buildQuery } from '../lib/apiClient';
+import { api, ApiError, buildQuery, clearApiCache } from '../lib/apiClient';
 
 // Sirve para CUALQUIER pantalla de listado (Grupos, Inconvenientes, etc.)
 // porque todos los mocks del equipo deben responder con la misma forma:
@@ -75,6 +75,6 @@ export function usePaginatedList(endpoint, { pageSize = 5, courseId } = {}) {
     error: isCurrentCourse ? error : null,
     setPage: updatePage,
     setSearch: updateSearch,
-    reload: load,
+    reload: () => { clearApiCache(); return load(); },
   };
 }

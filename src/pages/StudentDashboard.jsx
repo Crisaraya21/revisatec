@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ApiError } from '../lib/apiClient';
+import { ApiError, clearApiCache } from '../lib/apiClient';
 import { calendarApi, groupAnalysisApi, membersApi } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useCourse } from '../context/CourseContext';
@@ -36,8 +36,9 @@ export default function StudentDashboard() {
       optional(groupAnalysisApi.getReport(groupId)),
       optional(groupAnalysisApi.getFeedback(groupId)),
       optional(groupAnalysisApi.getIssues(groupId)),
+      optional(groupAnalysisApi.getContributions(groupId)),
     ])
-      .then(([analysis, members, report, feedback, issues]) => {
+      .then(([analysis, members, report, feedback, issues, contributions]) => {
         if (!isMounted) return;
         setApiError(null);
         setData({
@@ -47,6 +48,7 @@ export default function StudentDashboard() {
           milestones: report?.checklist || [],
           feedback,
           issues: issues?.items || [],
+          contributions,
         });
       })
       .catch((err) => {
@@ -65,10 +67,15 @@ export default function StudentDashboard() {
   const feedbackSummary = groupInfo && data.feedback?.status === 'published' ? data.feedback : null;
   const issues = groupInfo ? data.issues : [];
   const openIssues = issues.filter((issue) => issue.status !== 'Resuelto').length;
+  const myGithub = assignment.member?.githubUser?.toLowerCase();
+  const myContribution = groupInfo && myGithub
+    ? (data.contributions?.items || []).find((c) => c.githubUser?.toLowerCase() === myGithub) || null
+    : null;
   const avance = groupInfo?.avance ?? null;
   const errorToShow = assignment.status === 'error' ? assignment.error : apiError;
 
   const handleManualRefresh = () => {
+    clearApiCache();
     setReloadKey((k) => k + 1);
   };
 
@@ -244,6 +251,16 @@ export default function StudentDashboard() {
               <span className="stat-label">Integrantes</span>
               <span className="stat-value">{teamMembers.length}</span>
               <span className="stat-subtext">Registrados en el grupo</span>
+            </div>
+
+            <div className="student-stat-card">
+              <span className="stat-label">Mi aporte</span>
+              <span className="stat-value">{myContribution ? `${myContribution.percent}%` : '—'}</span>
+              <span className="stat-subtext">
+                {myContribution
+                  ? `${myContribution.commits} commits · ${myContribution.reviews} revisiones`
+                  : 'Sin actividad registrada'}
+              </span>
             </div>
           </div>
 

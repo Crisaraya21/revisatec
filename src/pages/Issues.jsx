@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { groupsApi, groupAnalysisApi } from '../api';
+import { clearApiCache } from '../lib/apiClient';
 import { useCourse } from '../context/CourseContext';
 import { formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
@@ -225,7 +226,7 @@ export default function Issues() {
           </div>
           <button
             type="button"
-            onClick={fetchIssuesFromApi}
+            onClick={() => { clearApiCache(); fetchIssuesFromApi(); }}
             className="btn-outline"
             style={{ padding: '6px 12px', fontSize: '0.781rem', background: 'var(--bg-surface)' }}
           >

@@ -5,6 +5,7 @@ import { ApiError } from '../lib/apiClient';
 import { formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import GroupMembersCard from '../components/GroupMembersCard';
+import ContributionsCard from '../components/ContributionsCard';
 import './GroupDetail.css';
 
 // Equivalencia para estados de síntesis de avance según el contrato MS2
@@ -360,6 +361,9 @@ export default function GroupDetail() {
               })}
             </div>
           )}
+
+          {/* Aporte por integrante (MS2 contributions + nombres de MS1) */}
+          <ContributionsCard groupId={groupId} variant="inline" />
         </div>
 
         {/* Síntesis del Avance (MS2 progress-summary) */}
@@ -397,7 +401,7 @@ export default function GroupDetail() {
                     </span>
                     <div className="milestone-content" style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="milestone-title">{formatCriterionName(item.criterionId) || `Criterio ${idx + 1}`}</span>
+                        <span className="milestone-title">{item.name || formatCriterionName(item.criterionId) || `Criterio ${idx + 1}`}</span>
                         <span
                           className={`reviewer-badge ${statusMeta.badgeClass}`}
                           style={{ fontSize: '0.72rem' }}
@@ -442,17 +446,19 @@ export default function GroupDetail() {
                 <tr>
                   <th>Evidencia</th>
                   <th>Tipo</th>
-                  <th>Fecha de Detección</th>
-                  <th>Enlace</th>
+                  <th>Autor</th>
+                  <th>Fecha</th>
                 </tr>
               </thead>
               <tbody>
                 {evidenceList.map((ev, idx) => {
-                  const title = ev.description || ev.title || ev.id || `Evidencia ${idx + 1}`;
-                  const isPR = String(ev.type || '').toLowerCase().includes('pr') || String(title).toLowerCase().includes('pr');
+                  // Campos de MS2 (Evidence): id, type, text, author, reviewer, when
+                  const title = ev.text || ev.description || ev.id || `Evidencia ${idx + 1}`;
+                  const isPR = String(ev.type || '').toLowerCase() === 'pr';
+                  const when = ev.when ?? ev.date;
 
                   return (
-                    <tr key={idx}>
+                    <tr key={ev.id || idx}>
                       <td>
                         <div className="evidence-item-cell">
                           <span className="evidence-icon-badge">
@@ -463,27 +469,23 @@ export default function GroupDetail() {
                       </td>
                       <td>
                         <span className="reviewer-badge direct">
-                          {ev.type || (isPR ? 'Pull Request' : 'Commit')}
+                          {isPR ? 'Pull request' : 'Commit'}
                         </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.813rem', color: 'var(--text-primary)' }}>
+                          {ev.author ? `@${ev.author}` : '—'}
+                        </span>
+                        {isPR && ev.reviewer && (
+                          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            Revisó @{ev.reviewer}
+                          </span>
+                        )}
                       </td>
                       <td>
                         <span className="evidence-time">
-                          {ev.date ? formatDate(ev.date) : 'Reciente'}
+                          {when ? formatDate(when) : '—'}
                         </span>
-                      </td>
-                      <td>
-                        {ev.url ? (
-                          <a
-                            href={ev.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ color: 'var(--action-primary)', fontWeight: 600, fontSize: '0.813rem' }}
-                          >
-                            Ver en GitHub ↗
-                          </a>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.813rem' }}>—</span>
-                        )}
                       </td>
                     </tr>
                   );

@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useCallback } from 'react';
 import { courseConfigApi } from '../api';
 import { useCourse } from '../context/CourseContext';
-import { ApiError } from '../lib/apiClient';
+import { ApiError, clearApiCache } from '../lib/apiClient';
 import './Rubric.css';
 
 // Iconos SVG para Rúbrica
@@ -446,7 +446,7 @@ export default function Rubric() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => selectedCourseId && loadAllSections(selectedCourseId)}
+                  onClick={() => { clearApiCache(); if (selectedCourseId) loadAllSections(selectedCourseId); }}
                   className="btn-outline"
                   style={{ padding: '4px 8px', fontSize: '0.75rem' }}
                 >

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ApiError } from '../lib/apiClient';
+import { ApiError, clearApiCache } from '../lib/apiClient';
 import { calendarApi, groupsApi } from '../api';
 import { useCourse } from '../context/CourseContext';
 import { fromEpochMs, toEpochMs, formatDate, toInputValue } from '../utils/date';
@@ -156,6 +156,7 @@ export default function Calendar({ readOnly = false }) {
   }, [selectedCourseId, readOnly]);
 
   const handleManualRefresh = () => {
+    clearApiCache();
     setIsLoading(true);
     setReloadKey((k) => k + 1);
   };

@@ -78,17 +78,58 @@ export function buildQuery(queryObj = {}) {
   return queryString ? `?${queryString}` : '';
 }
 
+// --- Caché de lecturas -------------------------------------------------------
+// Evita llamadas repetidas: si dos componentes piden lo mismo a la vez sale una sola
+// solicitud, y una respuesta se reutiliza durante GET_CACHE_TTL_MS. Cualquier escritura
+// (POST/PUT/PATCH/DELETE) vacía la caché para no mostrar datos viejos. Las notificaciones
+// solo se agrupan si están en curso, nunca se reutilizan.
+const GET_CACHE_TTL_MS = 30000;
+const getCache = new Map();
+
+/** Vacía la caché de lecturas (lo usan los botones Actualizar/Recargar). */
+export function clearApiCache() {
+  getCache.clear();
+}
+
+function cachedGet(path, options = {}) {
+  const reuseFinished = !path.startsWith('/notifications');
+  const key = `${path}|${JSON.stringify(options.headers || {})}`;
+  const hit = getCache.get(key);
+  if (hit && (hit.pending || (reuseFinished && Date.now() - hit.time < GET_CACHE_TTL_MS))) {
+    return hit.promise;
+  }
+  const entry = { pending: true, time: Date.now(), promise: null };
+  entry.promise = request(path, { method: 'GET', ...options }).then(
+    (body) => {
+      entry.pending = false;
+      entry.time = Date.now();
+      if (!reuseFinished) getCache.delete(key);
+      return body;
+    },
+    (error) => {
+      getCache.delete(key);
+      throw error;
+    },
+  );
+  getCache.set(key, entry);
+  return entry.promise;
+}
+
+function write(path, options) {
+  return request(path, options).finally(clearApiCache);
+}
+
 export const api = {
-  get: (path, options = {}) => request(path, { method: 'GET', ...options }),
+  get: (path, options = {}) => cachedGet(path, options),
   post: (path, data, options = {}) =>
-    request(path, { method: 'POST', body: JSON.stringify(data), ...options }),
+    write(path, { method: 'POST', body: JSON.stringify(data), ...options }),
   put: (path, data, options = {}) =>
-    request(path, { method: 'PUT', body: JSON.stringify(data), ...options }),
+    write(path, { method: 'PUT', body: JSON.stringify(data), ...options }),
   patch: (path, data, options = {}) =>
-    request(path, {
+    write(path, {
       method: 'PATCH',
       body: data !== undefined ? JSON.stringify(data) : undefined,
       ...options,
     }),
-  delete: (path, options = {}) => request(path, { method: 'DELETE', ...options }),
+  delete: (path, options = {}) => write(path, { method: 'DELETE', ...options }),
 };

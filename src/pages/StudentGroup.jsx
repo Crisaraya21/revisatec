@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ApiError } from '../lib/apiClient';
+import { ApiError, clearApiCache } from '../lib/apiClient';
 import { groupAnalysisApi, groupsApi, membersApi } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useCourse } from '../context/CourseContext';
@@ -67,6 +67,7 @@ export default function StudentGroup() {
   const errorToShow = assignment.status === 'error' ? assignment.error : apiError;
 
   const handleManualRefresh = () => {
+    clearApiCache();
     setReloadKey((k) => k + 1);
   };
 

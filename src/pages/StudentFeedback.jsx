@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCourse } from '../context/CourseContext';
 import { useStudentGroup } from '../hooks/useStudentGroup';
 import { groupAnalysisApi } from '../api';
-import { ApiError } from '../lib/apiClient';
+import { ApiError, clearApiCache } from '../lib/apiClient';
 import { formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
 import './Feedback.css';
@@ -65,6 +65,7 @@ export default function StudentFeedback() {
   }, [studentGroupId, reloadKey]);
 
   const handleManualRefresh = () => {
+    clearApiCache();
     setReloadKey((k) => k + 1);
   };
 

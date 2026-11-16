@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ApiError } from '../lib/apiClient';
+import { ApiError, clearApiCache } from '../lib/apiClient';
 import { calendarApi, groupAnalysisApi, membersApi } from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useCourse } from '../context/CourseContext';
@@ -75,6 +75,7 @@ export default function StudentDashboard() {
   const errorToShow = assignment.status === 'error' ? assignment.error : apiError;
 
   const handleManualRefresh = () => {
+    clearApiCache();
     setReloadKey((k) => k + 1);
   };
 

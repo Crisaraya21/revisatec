@@ -121,6 +121,7 @@ export function useNotifications() {
 
     fetchInitial();
 
+    let wasLive = false;
     const client = connectRealtime({
       getUrl: () =>
         notificationsApi.getRealtimeToken({
@@ -165,7 +166,10 @@ export function useNotifications() {
         if (!isMounted) return;
         setConnectionStatus(newStatus);
         if (newStatus === 'live') {
-          reload();
+          // La primera conexión llega justo después de la carga inicial: no se repite.
+          // Solo al reconectar se recarga, por si llegaron notificaciones mientras no había conexión.
+          if (wasLive) reload();
+          wasLive = true;
         }
       },
     });

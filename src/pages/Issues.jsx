@@ -157,7 +157,7 @@ export default function Issues() {
         <div className="issues-header-left">
           <h1 className="issues-title">Inconvenientes Detectados</h1>
           <span className="issues-subtitle">
-            Alertas automáticas generadas por el análisis de repositorio (MS2)
+            Alertas automáticas generadas por el análisis de repositorio
           </span>
         </div>
 

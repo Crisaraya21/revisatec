@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { useNotifications } from '../notifications/useNotifications';
 import { Icons } from '../components/Icons';
 import './Settings.css';
 
@@ -15,7 +14,6 @@ const COMPACT_DENSITY_KEY = 'revisatec_compact_density';
 export default function Settings() {
   const { user, isProfessor, isStudent, logout } = useAuth();
   const { theme, setTheme, toggleTheme } = useTheme();
-  const { connectionStatus } = useNotifications();
 
   // Estados de configuración de notificaciones
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -221,7 +219,7 @@ export default function Settings() {
               <div className="toggle-text">
                 <span className="toggle-label">Sonido de notificación</span>
                 <span className="toggle-help">
-                  Reproduce un sonido sutil cuando llega una nueva notificación en vivo.
+                  Reproduce un sonido sutil cuando llega una nueva notificación.
                 </span>
               </div>
               <div className="toggle-controls">
@@ -253,7 +251,7 @@ export default function Settings() {
               <div className="toggle-text">
                 <span className="toggle-label">Avisos emergentes en pantalla (toasts)</span>
                 <span className="toggle-help">
-                  Muestra un banner flotante en la esquina superior cuando ingresa una alerta en vivo.
+                  Muestra un banner flotante en la esquina superior cuando ingresa una alerta.
                 </span>
               </div>
               <label className="switch">
@@ -397,20 +395,6 @@ export default function Settings() {
               <span className="profile-data-label">Rol en Plataforma</span>
               <span className="profile-role-badge">
                 {isProfessor ? 'Profesor' : isStudent ? 'Estudiante' : 'Usuario'}
-              </span>
-            </div>
-
-            <div className="profile-data-item">
-              <span className="profile-data-label">Estado de Conexión en Vivo</span>
-              <span className={`conn-status-pill ${connectionStatus}`}>
-                <span className="dot" />
-                {connectionStatus === 'live'
-                  ? 'Conectado a Azure Web PubSub'
-                  : connectionStatus === 'connecting'
-                  ? 'Conectando...'
-                  : connectionStatus === 'reconnecting'
-                  ? 'Reconectando...'
-                  : 'Desconectado'}
               </span>
             </div>
           </div>

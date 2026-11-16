@@ -235,7 +235,9 @@
   align-items: start;
 }
 
-.panel-card {
+.panel-card,
+.contribution-card,
+.milestones-card {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: 14px;
@@ -244,6 +246,92 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.card-top-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2px;
+}
+
+.card-heading-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.card-heading-subtitle {
+  font-size: 0.813rem;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 3px;
+}
+
+/* Criterios y barras de cumplimiento */
+.criterion-badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.72rem;
+}
+
+.criterion-badge.success {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.criterion-badge.warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.criterion-badge.alert {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+[data-theme='dark'] .criterion-badge.success {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+[data-theme='dark'] .criterion-badge.warning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+[data-theme='dark'] .criterion-badge.alert {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.criterion-track {
+  height: 6px;
+  border-radius: 9999px;
+  background-color: var(--border-default);
+  overflow: hidden;
+}
+
+.criterion-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.35s ease;
+}
+
+.criterion-fill.success {
+  background-color: #10b981;
+}
+
+.criterion-fill.warning {
+  background-color: #f59e0b;
+}
+
+.criterion-fill.alert {
+  background-color: #ef4444;
 }
 
 .panel-header {
@@ -386,31 +474,49 @@
 .milestones-list {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 .hito-item {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background-color: var(--bg-sunken);
+  border: 1px solid var(--border-default);
+  transition: all 0.2s ease;
+}
+
+.hito-item:hover {
+  background-color: var(--bg-surface);
+  border-color: var(--border-strong);
 }
 
 .milestone-icon {
   margin-top: 2px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
-.milestone-icon.completed {
+.milestone-icon.completed,
+.milestone-icon.success {
   color: #059669;
 }
 
-.milestone-icon.in-progress {
+.milestone-icon.in-progress,
+.milestone-icon.info {
   color: var(--action-primary);
 }
 
-.milestone-icon.pending {
-  color: var(--text-muted);
-  opacity: 0.7;
+.milestone-icon.pending,
+.milestone-icon.alert {
+  color: #ef4444;
+}
+
+.milestone-icon.warning {
+  color: #f59e0b;
 }
 
 .milestone-content {
@@ -428,6 +534,56 @@
 .milestone-meta {
   font-size: 0.781rem;
   color: var(--text-muted);
+}
+
+.reviewer-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: capitalize;
+}
+
+.reviewer-badge.success {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.reviewer-badge.warning {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.reviewer-badge.alert {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.reviewer-badge.info {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+[data-theme='dark'] .reviewer-badge.success {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+[data-theme='dark'] .reviewer-badge.warning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+[data-theme='dark'] .reviewer-badge.alert {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+[data-theme='dark'] .reviewer-badge.info {
+  background-color: rgba(56, 189, 248, 0.2);
+  color: #7dd3fc;
 }
 
 .milestone-meta.completed {

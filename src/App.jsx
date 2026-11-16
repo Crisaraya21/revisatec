@@ -257,7 +257,6 @@ function MainAppShell() {
                       <Icons.Inconvenientes />
                       <span>Inconvenientes</span>
                     </div>
-                    <span className="sidebar-badge">4</span>
                   </NavLink>
                 </>
               )}

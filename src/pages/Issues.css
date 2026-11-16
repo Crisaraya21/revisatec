@@ -173,15 +173,42 @@
   width: 320px;
   max-width: 100%;
   color: var(--text-muted);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.issues-search-box:focus-within {
+  border-color: var(--action-primary);
+  box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
 }
 
 .issues-search-input {
-  border: none;
-  background: transparent;
+  border: none !important;
+  background: transparent !important;
   color: var(--text-primary);
   font-size: 0.875rem;
-  outline: none;
+  outline: none !important;
+  box-shadow: none !important;
+  transform: none !important;
   width: 100%;
+  padding: 0 !important;
+}
+
+.issues-search-input:focus,
+.issues-search-input:hover {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* Barra de Controles y Filtros */
+.issues-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
 }
 
 .filter-pills-row {
@@ -225,19 +252,42 @@
 .dropdown-filters-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .filter-select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-default);
   color: var(--text-primary);
-  padding: 7px 12px;
+  padding: 8px 38px 8px 14px;
   border-radius: 8px;
-  font-size: 0.813rem;
+  font-size: 0.875rem;
   font-weight: 500;
   outline: none;
   cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 14px 14px;
+  min-width: 155px;
+  transition: all 0.2s ease;
+}
+
+:root[data-theme='dark'] .filter-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+}
+
+.filter-select:hover {
+  border-color: var(--border-strong);
+}
+
+.filter-select:focus {
+  border-color: var(--action-primary);
+  box-shadow: 0 0 0 3px rgba(43, 108, 176, 0.15);
 }
 
 /* Tabla */

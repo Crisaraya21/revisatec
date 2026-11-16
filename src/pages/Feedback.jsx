@@ -6,6 +6,27 @@ import { useCourse } from '../context/CourseContext';
 import { Icons } from '../components/Icons';
 import './Feedback.css';
 
+function parseAiProposal(text) {
+  if (!text || typeof text !== 'string') return null;
+
+  const scoreMatch = text.match(/(?:obtiene|calificaci[oó]n|puntaje:?)\s*(\d+\s*(?:\/\s*\d+)?(?:\s*pts)?)/i);
+  const fortMatch = text.match(/Fortaleza(?:s)?:\s*([^.\n]+(?:\([^)]+\))?)\.?/i);
+  const impMatch = text.match(/(?:A mejorar|Aspecto(?:s)? a mejorar|Oportunidad(?:es)? de mejora|Debilidad(?:es)?):\s*([^.\n]+(?:\([^)]+\))?)\.?/i);
+
+  if (scoreMatch || fortMatch || impMatch) {
+    return {
+      score: scoreMatch ? scoreMatch[1].trim() : null,
+      strength: fortMatch ? fortMatch[1].trim() : null,
+      improvement: impMatch ? impMatch[1].trim() : null,
+      raw: text,
+    };
+  }
+
+  return {
+    raw: text,
+  };
+}
+
 export default function Feedback() {
   const { selectedCourseId, loading: coursesLoading } = useCourse();
   const requestedGroupId = useLocation().state?.groupId ?? null;
@@ -368,15 +389,56 @@ export default function Feedback() {
                 <span className="ai-proposal-meta">Basada en el análisis del repositorio</span>
               </div>
             </div>
-            <div className="ai-proposal-content-box">
-              {aiFeedback ? (
-                <p>{aiFeedback}</p>
-              ) : (
+            {aiFeedback ? (() => {
+              const parsed = parseAiProposal(aiFeedback);
+              if (parsed?.strength || parsed?.improvement || parsed?.score) {
+                return (
+                  <div className="ai-proposal-structured">
+                    {parsed.score && (
+                      <div className="ai-score-banner">
+                        <span className="ai-score-label">Evaluación automática sugerida:</span>
+                        <span className="ai-score-badge">{parsed.score}</span>
+                      </div>
+                    )}
+                    <div className="ai-insights-grid">
+                      {parsed.strength && (
+                        <div className="ai-insight-card strength">
+                          <div className="ai-insight-header">
+                            <span className="ai-insight-icon strength">
+                              <Icons.CheckCircle />
+                            </span>
+                            <span className="ai-insight-type">Fortaleza detectada</span>
+                          </div>
+                          <p className="ai-insight-text">{parsed.strength}</p>
+                        </div>
+                      )}
+                      {parsed.improvement && (
+                        <div className="ai-insight-card improvement">
+                          <div className="ai-insight-header">
+                            <span className="ai-insight-icon improvement">
+                              <Icons.AlertTriangle />
+                            </span>
+                            <span className="ai-insight-type">Aspecto a mejorar</span>
+                          </div>
+                          <p className="ai-insight-text">{parsed.improvement}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="ai-proposal-content-box">
+                  <p>{aiFeedback}</p>
+                </div>
+              );
+            })() : (
+              <div className="ai-proposal-content-box">
                 <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
                   Sin propuesta de IA disponible para esta entrega.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
             <div className="ai-proposal-actions">
               <button
                 type="button"

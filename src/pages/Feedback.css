@@ -47,10 +47,11 @@
 .filter-select {
   appearance: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
   background-color: var(--bg-surface);
   border: 1px solid var(--border-default);
   color: var(--text-primary);
-  padding: 8px 36px 8px 16px;
+  padding: 8px 38px 8px 14px;
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
@@ -59,6 +60,8 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
+  background-size: 14px 14px;
+  min-width: 170px;
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
@@ -147,6 +150,144 @@
   color: var(--action-primary);
   display: block;
   margin-top: 3px;
+}
+
+/* Propuesta IA Estructurada y Ordenada */
+.ai-proposal-structured {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-score-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: var(--bg-sunken);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+}
+
+.ai-score-label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.ai-score-badge {
+  display: inline-flex;
+  align-items: center;
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--action-primary);
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 3px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(37, 99, 235, 0.2);
+}
+
+:root[data-theme='dark'] .ai-score-badge {
+  background-color: rgba(96, 165, 250, 0.15);
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+.ai-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.ai-insight-card {
+  border-radius: 10px;
+  padding: 14px 18px;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ai-insight-card.strength {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+:root[data-theme='dark'] .ai-insight-card.strength {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.ai-insight-card.improvement {
+  background-color: #fffbeb;
+  border-color: #fde68a;
+}
+
+:root[data-theme='dark'] .ai-insight-card.improvement {
+  background-color: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.ai-insight-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-insight-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.ai-insight-icon.strength {
+  color: #16a34a;
+}
+
+:root[data-theme='dark'] .ai-insight-icon.strength {
+  color: #4ade80;
+}
+
+.ai-insight-icon.improvement {
+  color: #d97706;
+}
+
+:root[data-theme='dark'] .ai-insight-icon.improvement {
+  color: #fbbf24;
+}
+
+.ai-insight-type {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ai-insight-card.strength .ai-insight-type {
+  color: #15803d;
+}
+
+:root[data-theme='dark'] .ai-insight-card.strength .ai-insight-type {
+  color: #86efac;
+}
+
+.ai-insight-card.improvement .ai-insight-type {
+  color: #b45309;
+}
+
+:root[data-theme='dark'] .ai-insight-card.improvement .ai-insight-type {
+  color: #fde68a;
+}
+
+.ai-insight-text {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  font-weight: 500;
 }
 
 /* Caja de texto de la propuesta IA - Usa las variables del tema para integrarse perfectamente */

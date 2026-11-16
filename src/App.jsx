@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import { useTheme } from './context/ThemeContext';
 import { Icons } from './components/Icons';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { NotificationBell } from './components/NotificationBell';
@@ -24,7 +23,6 @@ import './App.css';
 
 function MainAppShell() {
   const { user, isProfessor, isStudent, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -77,14 +75,15 @@ function MainAppShell() {
 
         <div className="topbar-right">
           {/* Botón de Modo Oscuro / Claro con animación de giro */}
+          {/* Acceso directo a Configuración */}
           <button
             type="button"
-            onClick={toggleTheme}
-            className="icon-circle-btn theme-btn-animated"
-            title={theme === 'light' ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro'}
-            aria-label="Cambiar tema"
+            onClick={() => navigate('/settings')}
+            className="icon-circle-btn settings-topbar-btn"
+            title="Configuración"
+            aria-label="Ir a Configuración"
           >
-            {theme === 'light' ? <Icons.Moon /> : <Icons.Sun />}
+            <Icons.Settings />
           </button>
 
           {/* Campana de Notificaciones */}

@@ -177,6 +177,19 @@ export default function GroupDetail() {
   const criteriaList = Array.isArray(analysis?.criteria) ? analysis.criteria : [];
   const progressItems = Array.isArray(progressSummary?.items) ? progressSummary.items : [];
 
+  const formatCriterionName = (raw) => {
+    if (!raw) return '';
+    const matched = criteriaList.find(
+      (c) =>
+        c.id === raw ||
+        c.criterionId === raw ||
+        String(c.name).toLowerCase() === String(raw).toLowerCase().replace(/_/g, ' ')
+    );
+    if (matched && matched.name) return matched.name;
+    const cleaned = String(raw).replace(/_/g, ' ');
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  };
+
   return (
     <div className="group-detail-page">
       {/* ----------------- CABECERA PRINCIPAL ----------------- */}
@@ -294,7 +307,7 @@ export default function GroupDetail() {
       {/* ----------------- SECCIÓN INTERMEDIA ----------------- */}
       <div className="middle-sections-grid">
         {/* Desglose de Criterios (MS2 Analysis) */}
-        <div className="contribution-card">
+        <div className="panel-card contribution-card">
           <div className="card-top-header">
             <div>
               <h2 className="card-heading-title">Cumplimiento por Criterio</h2>
@@ -354,7 +367,7 @@ export default function GroupDetail() {
         </div>
 
         {/* Síntesis del Avance (MS2 progress-summary) */}
-        <div className="milestones-card">
+        <div className="panel-card milestones-card">
           <div className="card-top-header">
             <div>
               <h2 className="card-heading-title">Síntesis del Avance</h2>
@@ -388,7 +401,7 @@ export default function GroupDetail() {
                     </span>
                     <div className="milestone-content" style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span className="milestone-title">{item.name || item.criterionId || `Criterio ${idx + 1}`}</span>
+                        <span className="milestone-title">{item.name || formatCriterionName(item.criterionId) || `Criterio ${idx + 1}`}</span>
                         <span
                           className={`reviewer-badge ${statusMeta.badgeClass}`}
                           style={{ fontSize: '0.72rem' }}

@@ -24,6 +24,7 @@ export default function GroupDetail() {
   const [analysis, setAnalysis] = useState(null);
   const [progressSummary, setProgressSummary] = useState(null);
   const [issues, setIssues] = useState([]);
+  const [activityTotals, setActivityTotals] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
   const [showSynthesisModal, setShowSynthesisModal] = useState(false);
@@ -51,10 +52,11 @@ export default function GroupDetail() {
       }
 
       // Cargar análisis, síntesis de avance e inconvenientes con allSettled (un fallo no tumba al resto)
-      const [analysisRes, progressRes, issuesRes] = await Promise.allSettled([
+      const [analysisRes, progressRes, issuesRes, contributionsRes] = await Promise.allSettled([
         groupAnalysisApi.getAnalysis(groupId),
         groupAnalysisApi.getProgressSummary(groupId),
         groupAnalysisApi.getIssues(groupId),
+        groupAnalysisApi.getContributions(groupId),
       ]);
 
       if (!isMounted) return;
@@ -67,6 +69,11 @@ export default function GroupDetail() {
       } else {
         console.warn('Análisis no disponible:', analysisRes.reason);
       }
+
+      // Totales reales del repositorio (la evidencia solo trae los 10 eventos más recientes)
+      setActivityTotals(contributionsRes.status === 'fulfilled'
+        ? { commits: contributionsRes.value?.totalCommits ?? 0, prs: contributionsRes.value?.totalPrs ?? 0 }
+        : null);
 
       if (progressRes.status === 'fulfilled') {
         setProgressSummary(progressRes.value);
@@ -298,9 +305,15 @@ export default function GroupDetail() {
         </div>
 
         <div className="metric-card">
-          <span className="metric-card-label">Evidencias detectadas</span>
-          <span className="metric-card-value">{evidenceList.length}</span>
-          <span className="metric-card-subtext">Commits y pull requests</span>
+          <span className="metric-card-label">Actividad del repositorio</span>
+          <span className="metric-card-value">
+            {activityTotals ? activityTotals.commits + activityTotals.prs : evidenceList.length}
+          </span>
+          <span className="metric-card-subtext">
+            {activityTotals
+              ? `${activityTotals.commits} commits · ${activityTotals.prs} pull requests`
+              : 'Commits y pull requests'}
+          </span>
         </div>
       </div>
 
@@ -431,7 +444,7 @@ export default function GroupDetail() {
         <div className="evidence-header">
           <h2 className="card-heading-title">Evidencias del Análisis</h2>
           <span className="card-heading-subtitle">
-            Commits y pull requests inspeccionados en el repositorio
+            Los 10 commits y pull requests más recientes del repositorio
           </span>
         </div>
 

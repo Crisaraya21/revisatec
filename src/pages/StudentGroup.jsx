@@ -6,6 +6,7 @@ import { useCourse } from '../context/CourseContext';
 import { useStudentGroup } from '../hooks/useStudentGroup';
 import { formatDate } from '../utils/date';
 import { Icons } from '../components/Icons';
+import ContributionsCard from '../components/ContributionsCard';
 import './StudentDashboard.css';
 
 const optional = (promise) => promise.catch(() => null);
@@ -392,8 +393,10 @@ export default function StudentGroup() {
             )}
           </div>
 
-          {/* Columna Derecha: Avance e Hitos */}
+          {/* Columna Derecha: Aporte, Avance e Hitos */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <ContributionsCard groupId={group.id} highlightEmail={user?.email} title="Aporte del equipo" />
+
             {/* Avance del Grupo */}
             <div className="student-team-card">
               <h3 className="card-title-simple">Avance Global del Grupo</h3>

@@ -38,6 +38,13 @@ export const groupAnalysisApi = {
    * @param {number|string} groupId
    * @returns {Promise<{ groupId?: number, total?: number, items: Array<{ id: number, groupId: number, groupName?: string, type: string, description?: string, date: number, status: 'Sin resolver'|'Resuelto' }> }>}
    */
+  getContributions: async (groupId) => {
+    return api.get(`/groups/${groupId}/contributions`);
+  },
+
+  /**
+   * Inconvenientes detectados para un grupo específico.
+   */
   getIssues: async (groupId) => {
     return api.get(`/groups/${groupId}/issues`);
   },
